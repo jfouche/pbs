@@ -1,8 +1,30 @@
 use rusqlite::*;
 
+#[derive(Debug)]
+pub enum Error {
+    DatabaseErr(rusqlite::Error),
+}
+
+fn db_err(e: rusqlite::Error) -> Error {
+    Error::DatabaseErr(e)
+}
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+// trait ErrConverter<T> {
+//     fn if_err(err: Error) -> Result<T>;
+// }
+
+// impl<T> ErrConverter<T> for rusqlite::Result<T> {
+//     fn if_err(err: Error) -> Result<T> {
+//         Result::Err(err)
+//     }
+// }
+
 pub struct Item {
     _id: usize,
-    name: String,
+    pub pn: String,
+    pub name: String,
 }
 
 pub struct Store {
@@ -12,6 +34,7 @@ pub struct Store {
 impl Store {
     const INIT_TABLES: &str = "CREATE TABLE IF NOT EXISTS items(
         id   INTEGER PRIMARY KEY,
+        pn   TEXT,
         name TEXT
     );
     
@@ -25,31 +48,54 @@ impl Store {
 
     /// Open the store
     pub fn open(url: &str) -> Result<Self> {
-        let conn = Connection::open(url)?;
-        conn.execute(Store::INIT_TABLES, ())?;
+        let conn = Connection::open(url).map_err(db_err)?;
+        conn.execute(Store::INIT_TABLES, ()).map_err(db_err)?;
         Ok(Store { conn })
     }
 
     // Add a new item to the store
     pub fn new_item(&self) -> Result<Item> {
         self.conn
-            .execute("INSERT INTO items(name) VALUES(?1)", ["".to_string()])?;
+            .execute("INSERT INTO items(name) VALUES(?1)", ["".to_string()])
+            .map_err(db_err)?;
         let id = self.conn.last_insert_rowid();
         Ok(Item {
             _id: id as usize,
+            pn: String::new(),
             name: String::new(),
         })
     }
 
+    /// Save the item
+    pub fn save_item(&mut self, item: Item) -> Result<()> {
+        if self
+            .conn
+            .execute(
+                "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
+                (&item.pn, &item.name, item._id),
+            )
+            .map_err(db_err)?
+            != 1
+        {
+            return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
+        }
+        Ok(())
+    }
+
     pub fn get_items(&self) -> Result<Vec<Item>> {
-        let mut stmt = self.conn.prepare("SELECT id, name, data FROM itms")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, pn, name, data FROM itms")
+            .map_err(db_err)?;
         let items = stmt
             .query_map([], |row| {
                 Ok(Item {
                     _id: row.get(0)?,
-                    name: row.get(1)?,
+                    pn: row.get(1)?,
+                    name: row.get(2)?,
                 })
-            })?
+            })
+            .map_err(db_err)?
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
         Ok(items)

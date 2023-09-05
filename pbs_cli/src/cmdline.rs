@@ -15,8 +15,8 @@ pub enum CmdLineError {
 
 #[derive(Default, Debug)]
 pub struct AddParams {
-    pn: String,
-    name: String,
+    pub pn: String,
+    pub name: String,
 }
 
 /// Return the command
