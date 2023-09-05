@@ -1,0 +1,3 @@
+[workspace]
+members = ["pbs_core", "pbs_cli"]
+resolver = "2"
