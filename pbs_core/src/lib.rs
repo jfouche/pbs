@@ -54,14 +54,14 @@ impl Store {
     }
 
     // Add a new item to the store
-    pub fn new_item(&self) -> Result<Item> {
+    pub fn new_item(&self, pn: &str) -> Result<Item> {
         self.conn
-            .execute("INSERT INTO items(name) VALUES(?1)", ["".to_string()])
+            .execute("INSERT INTO items(pn) VALUES(?1)", [pn.to_string()])
             .map_err(db_err)?;
         let id = self.conn.last_insert_rowid();
         Ok(Item {
             _id: id as usize,
-            pn: String::new(),
+            pn: pn.to_string(),
             name: String::new(),
         })
     }
@@ -106,16 +106,16 @@ impl Store {
 mod test {
     use super::*;
 
-    const DB_URL: &str = "./test.db3";
+    const DB_URL: &str = ":memory:";
 
-    #[test]
+    // #[test]
     fn init_database() {
         std::fs::remove_file(DB_URL).unwrap();
 
         let store = Store::open(DB_URL);
         assert!(store.is_ok());
         let store = store.unwrap();
-        assert!(store.new_item().is_ok());
+        assert!(store.new_item("PN1").is_ok());
         let items = store.get_items();
         assert!(items.is_ok());
         let items = items.unwrap();

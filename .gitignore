@@ -1,4 +1,5 @@
 /target/
+*.db3
 
 # Logs
 # logs

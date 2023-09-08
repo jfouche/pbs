@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 pbs_core = {path = "../pbs_core"}
-clap="4.4.2"
+nom="7.1"

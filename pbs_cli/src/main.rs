@@ -1,39 +1,40 @@
+use std::io::{self, Write};
+
 use pbs_core::{Result, Store};
 
-use clap::{arg, Command};
+use crate::parser::{get_command, Command};
+
+mod parser;
 
 fn main() -> Result<()> {
-    let matches = cli().get_matches();
+    loop {
+        print!("pbs> ");
+        io::stdout().flush().unwrap();
 
-    match matches.subcommand() {
-        Some(("add", sub_matches)) => {
-            let pn = sub_matches
-                .get_one::<String>("PART_NUMBER")
-                .expect("required");
-            add_item(pn)?;
+        let mut input = String::new();
+        match io::stdin().read_line(&mut input) {
+            Ok(_) => match get_command(&input) {
+                Ok((_, cmd)) => match cmd {
+                    Command::Add { pn } => match add_item(&pn) {
+                        Ok(()) => {
+                            println!("Added item {pn}")
+                        }
+                        Err(err) => println!("ERROR : {err:?}"),
+                    },
+                    Command::List => {}
+                    Command::Exit => break,
+                },
+                Err(e) => {}
+            },
+            Err(error) => println!("error: {}", error),
         }
-        _ => unreachable!(),
     }
     Ok(())
 }
 
-fn cli() -> Command {
-    // https://docs.rs/clap/latest/clap/_derive/_cookbook/git/index.html
-    Command::new("pbs")
-        .about("Product Breakdown Store")
-        .subcommand_required(true)
-        .arg_required_else_help(true)
-        .subcommand(
-            Command::new("add")
-                .about("Add a new item to store")
-                .arg(arg!(<PART_NUMBER> "Part number"))
-                .arg_required_else_help(true),
-        )
-}
-
 fn add_item(pn: &str) -> Result<()> {
     let mut store = Store::open("store.db3")?;
-    let mut item = store.new_item()?;
+    let mut item = store.new_item(pn)?;
     item.pn = pn.to_string();
     store.save_item(item)?;
     Ok(())
