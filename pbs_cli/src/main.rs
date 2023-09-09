@@ -1,10 +1,17 @@
 use std::io::{self, Write};
 
+use parser::AddParams;
 use pbs_core::{Result, Store};
 
 use crate::parser::{get_command, Command};
 
 mod parser;
+
+#[derive(PartialEq)]
+enum CliState {
+    Continue,
+    Exit,
+}
 
 fn main() -> Result<()> {
     loop {
@@ -14,28 +21,39 @@ fn main() -> Result<()> {
         let mut input = String::new();
         match io::stdin().read_line(&mut input) {
             Ok(_) => match get_command(&input) {
-                Ok((_, cmd)) => match cmd {
-                    Command::Add { pn } => match add_item(&pn) {
-                        Ok(()) => {
-                            println!("Added item {pn}")
-                        }
-                        Err(err) => println!("ERROR : {err:?}"),
-                    },
-                    Command::List => {}
-                    Command::Exit => break,
-                },
-                Err(e) => {}
+                Ok((_, cmd)) => {
+                    if handle_command(cmd) == CliState::Exit {
+                        break;
+                    }
+                }
+                Err(err) => println!("ERROR : {}", err),
             },
-            Err(error) => println!("error: {}", error),
+            Err(err) => println!("ERROR : {}", err),
         }
     }
     Ok(())
 }
 
-fn add_item(pn: &str) -> Result<()> {
+fn handle_command(cmd: Command) -> CliState {
+    let mut state = CliState::Continue;
+    match cmd {
+        // add ...
+        Command::Add(params) => match handle_add(&params) {
+            Ok(()) => {
+                println!("Added item {pn}", pn = params.pn)
+            }
+            Err(err) => println!("ERROR : {err:?}"),
+        },
+        // list ...
+        Command::List => {}
+        // exit ...
+        Command::Exit => state = CliState::Exit,
+    }
+    state
+}
+
+fn handle_add(params: &AddParams) -> Result<()> {
     let mut store = Store::open("store.db3")?;
-    let mut item = store.new_item(pn)?;
-    item.pn = pn.to_string();
-    store.save_item(item)?;
+    let item = store.new_item(&params.pn, &params.name)?;
     Ok(())
 }

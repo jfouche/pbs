@@ -8,18 +8,45 @@ use nom::{
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Command {
-    Add { pn: String },
+    Add(AddParams),
     List,
     Exit,
 }
 
-/// add <pn>
+#[derive(PartialEq, Eq, Debug)]
+pub struct AddParams {
+    pub pn: String,
+    pub name: String,
+}
+
+// #[derive(PartialEq, Eq, Debug)]
+// pub enum ParserError {
+//     MissingPartNumber,
+//     MissingName,
+//     TooManyParams,
+// }
+
+// //type ErrorTranslator = Fn(nom::error::Error<&str>) -> ParserError;
+
+// fn missing_pn(_: nom::error::Error<&str>) -> impl Fn(nom::error::Error<&str>) -> ParserError {
+//     |_: nom::error::Error<&str>| ParserError::MissingPartNumber
+// }
+
+// type CResult<'a> = IResult<&'a str, Command, ParserError>;
+
+/// add <pn> <name>
 fn cmd_add(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add")(input)?;
     let (input, _) = space1(input)?;
     let (input, pn) = alphanumeric1(input)?;
+    let (input, _) = space1(input)?;
+    let (input, name) = alphanumeric1(input)?;
     let (input, _) = eof(input)?;
-    Ok((input, Command::Add { pn: pn.to_string() }))
+    let params = AddParams {
+        pn: pn.to_string(),
+        name: name.to_string(),
+    };
+    Ok((input, Command::Add(params)))
 }
 
 /// list
@@ -40,6 +67,9 @@ pub fn get_command(input: &str) -> IResult<&str, Command> {
     alt((cmd_add, cmd_list, cmd_exit))(input.trim())
 }
 
+/// =================================================================
+/// Test
+/// =================================================================
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -67,11 +97,16 @@ mod tests {
 
     #[test]
     fn test_add_ok() {
-        assert_is(
-            Command::Add {
-                pn: "toto".to_string(),
-            },
-            " add \t toto  ",
-        );
+        let res = get_command("\t add \t my_pn \t   my_name  ");
+        assert!(res.is_ok(), "{res:?}");
+        if let Ok((_, cmd)) = res {
+            match cmd {
+                Command::Add(params) => {
+                    assert_eq!("my_pn".to_string(), params.pn);
+                    assert_eq!("my_name".to_string(), params.name);
+                }
+                _ => panic!("Bad command : {cmd:?}"),
+            }
+        }
     }
 }

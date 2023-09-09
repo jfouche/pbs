@@ -54,15 +54,18 @@ impl Store {
     }
 
     // Add a new item to the store
-    pub fn new_item(&self, pn: &str) -> Result<Item> {
+    pub fn new_item(&self, pn: &str, name: &str) -> Result<Item> {
         self.conn
-            .execute("INSERT INTO items(pn) VALUES(?1)", [pn.to_string()])
+            .execute(
+                "INSERT INTO items(pn, name) VALUES(?1, ?2)",
+                [pn.to_string(), name.to_string()],
+            )
             .map_err(db_err)?;
         let id = self.conn.last_insert_rowid();
         Ok(Item {
             _id: id as usize,
             pn: pn.to_string(),
-            name: String::new(),
+            name: name.to_string(),
         })
     }
 
@@ -115,7 +118,7 @@ mod test {
         let store = Store::open(DB_URL);
         assert!(store.is_ok());
         let store = store.unwrap();
-        assert!(store.new_item("PN1").is_ok());
+        assert!(store.new_item("PN1", "NAME1").is_ok());
         let items = store.get_items();
         assert!(items.is_ok());
         let items = items.unwrap();
