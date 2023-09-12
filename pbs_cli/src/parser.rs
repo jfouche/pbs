@@ -3,6 +3,7 @@ use nom::{
     bytes::streaming::tag,
     character::complete::{alphanumeric1, space1},
     combinator::eof,
+    error::ParseError,
     IResult,
 };
 
@@ -20,10 +21,15 @@ pub struct AddParams {
 }
 
 // #[derive(PartialEq, Eq, Debug)]
-// pub enum ParserError {
+// pub enum PbsParserError {
 //     MissingPartNumber,
 //     MissingName,
 //     TooManyParams,
+// }
+
+// impl ParseError<&str> for PbsParserError {
+//     fn from_error_kind(input: &str, kind: nom::error::ErrorKind) -> Self {}
+//     fn append(input: &str, kind: nom::error::ErrorKind, other: Self) -> Self {}
 // }
 
 // //type ErrorTranslator = Fn(nom::error::Error<&str>) -> ParserError;
@@ -97,13 +103,13 @@ mod tests {
 
     #[test]
     fn test_add_ok() {
-        let res = get_command("\t add \t my_pn \t   my_name  ");
+        let res = get_command("\t add \t PN \t   NAME  ");
         assert!(res.is_ok(), "{res:?}");
         if let Ok((_, cmd)) = res {
             match cmd {
                 Command::Add(params) => {
-                    assert_eq!("my_pn".to_string(), params.pn);
-                    assert_eq!("my_name".to_string(), params.name);
+                    assert_eq!("PN".to_string(), params.pn);
+                    assert_eq!("NAME".to_string(), params.name);
                 }
                 _ => panic!("Bad command : {cmd:?}"),
             }
