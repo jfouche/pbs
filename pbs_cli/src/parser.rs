@@ -1,15 +1,16 @@
 use nom::{
     branch::alt,
     bytes::streaming::tag,
-    character::complete::{alphanumeric1, space1},
-    combinator::eof,
-    error::ParseError,
+    character::complete::{alphanumeric1, digit1, space1},
+    combinator::{eof, map_res},
+    // error::ParseError,
     IResult,
 };
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Command {
     Add(AddParams),
+    AppendChild(AppendChildParams),
     List,
     Exit,
 }
@@ -18,6 +19,13 @@ pub enum Command {
 pub struct AddParams {
     pub pn: String,
     pub name: String,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct AppendChildParams {
+    pub parent_pn: String,
+    pub child_pn: String,
+    pub quantity: usize,
 }
 
 // #[derive(PartialEq, Eq, Debug)]
@@ -40,11 +48,24 @@ pub struct AddParams {
 
 // type CResult<'a> = IResult<&'a str, Command, ParserError>;
 
+/// Get the command of the input
+pub fn get_command(input: &str) -> IResult<&str, Command> {
+    alt((cmd_add, cmd_list, cmd_append_child, cmd_exit))(input.trim())
+}
+
+fn pn(input: &str) -> IResult<&str, &str> {
+    alphanumeric1(input)
+}
+
+fn quantity(input: &str) -> IResult<&str, usize> {
+    map_res(digit1, |s: &str| s.parse::<usize>())(input)
+}
+
 /// add <pn> <name>
 fn cmd_add(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add")(input)?;
     let (input, _) = space1(input)?;
-    let (input, pn) = alphanumeric1(input)?;
+    let (input, pn) = pn(input)?;
     let (input, _) = space1(input)?;
     let (input, name) = alphanumeric1(input)?;
     let (input, _) = eof(input)?;
@@ -69,8 +90,22 @@ fn cmd_exit(input: &str) -> IResult<&str, Command> {
     Ok((input, Command::Exit))
 }
 
-pub fn get_command(input: &str) -> IResult<&str, Command> {
-    alt((cmd_add, cmd_list, cmd_exit))(input.trim())
+/// `append-child <parent-pn> <child-pn> <quantity>`
+fn cmd_append_child(input: &str) -> IResult<&str, Command> {
+    let (input, _) = tag("append-child")(input)?;
+    let (input, _) = space1(input)?;
+    let (input, parent_pn) = pn(input)?;
+    let (input, _) = space1(input)?;
+    let (input, child_pn) = pn(input)?;
+    let (input, _) = space1(input)?;
+    let (input, quantity) = quantity(input)?;
+    let (input, _) = eof(input)?;
+    let params = AppendChildParams {
+        parent_pn: parent_pn.to_string(),
+        child_pn: child_pn.to_string(),
+        quantity,
+    };
+    Ok((input, Command::AppendChild(params)))
 }
 
 /// =================================================================

@@ -36,4 +36,13 @@ impl Store {
     pub fn get_items(&self) -> database::Result<Vec<Item>> {
         self.db.get_items()
     }
+
+    pub fn add_child(
+        &mut self,
+        parent_pn: &str,
+        child_pn: &str,
+        quantity: usize,
+    ) -> database::Result<()> {
+        self.db.append_child(parent_pn, child_pn, quantity)
+    }
 }

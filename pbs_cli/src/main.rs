@@ -18,7 +18,7 @@ impl PbsCli for Store {
             // add ...
             Command::Add(params) => {
                 let item = self.new_item(&params.pn, &params.name)?;
-                println!("  added item {}", item.name)
+                println!("  added item {}", item.name);
             }
             // list ...
             Command::List => {
@@ -32,6 +32,12 @@ impl PbsCli for Store {
                         name = item.name,
                         w = max_pn_len
                     );
+                }
+            }
+            Command::AppendChild(params) => {
+                if let Err(e) = self.add_child(&params.parent_pn, &params.child_pn, params.quantity)
+                {
+                    eprintln!("ERROR: {:?}", e);
                 }
             }
             _ => {}

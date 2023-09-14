@@ -91,13 +91,29 @@ impl Database {
         }
         Ok(())
     }
+
+    /// Append a child to an item
+    pub fn append_child(&mut self, parent_pn: &str, child_pn: &str, quantity: usize) -> Result<()> {
+        if self
+            .0
+            .execute(
+                "INSERT INTO children (id_parent, id_child, quantity) VALUES(?1, ?2, ?3)",
+                (parent_pn, child_pn, quantity),
+            )
+            .map_err(db_err)?
+            != 1
+        {
+            return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
 
-    // #[test]
+    #[test]
     fn init_database() {
         let db = Database::open(":memory:");
         assert!(db.is_ok());
