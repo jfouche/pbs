@@ -39,10 +39,10 @@ impl Store {
 
     pub fn add_child(
         &mut self,
-        parent_pn: &str,
-        child_pn: &str,
+        parent: &Item,
+        child: &Item,
         quantity: usize,
     ) -> database::Result<()> {
-        self.db.append_child(parent_pn, child_pn, quantity)
+        self.db.add_child(parent, child, quantity)
     }
 }

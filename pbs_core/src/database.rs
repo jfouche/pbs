@@ -19,25 +19,39 @@ fn db_err(e: rusqlite::Error) -> Error {
     Error::DatabaseErr(e)
 }
 
-const INIT_TABLES: &str = "CREATE TABLE IF NOT EXISTS items(
-    id   INTEGER PRIMARY KEY,
-    pn   TEXT,
-    name TEXT
-);
-
-CREATE TABLE IF NOT EXISTS children(
-    id_parent INTEGER,
-    id_child  INTEGER,
-    quantity  INTEGER,
-    FOREIGN KEY(id_parent) REFERENCES items(id),
-    FOREIGN KEY(id_child) REFERENCES items(id)
-);";
+const INIT_DB: [&str; 4] = [
+    "PRAGMA foreign_keys = ON;",
+    "CREATE TABLE IF NOT EXISTS items(
+        id   INTEGER PRIMARY KEY,
+        pn   TEXT,
+        name TEXT
+    );",
+    "CREATE TABLE IF NOT EXISTS children(
+        id_parent INTEGER,
+        id_child  INTEGER,
+        quantity  INTEGER,
+        FOREIGN KEY(id_parent) REFERENCES items(id),
+        FOREIGN KEY(id_child) REFERENCES items(id)
+    );",
+    "CREATE VIEW IF NOT EXISTS view_children AS
+        SELECT
+            items.id, 
+            items.pn, 
+            items.name, 
+            children.id_parent,
+            children.quantity 
+        FROM items, children 
+        WHERE children.id_child = items.id",
+];
 
 impl Database {
     /// Open the store
     pub fn open(url: &str) -> Result<Self> {
         let conn = Connection::open(url).map_err(db_err)?;
-        conn.execute(INIT_TABLES, ()).map_err(db_err)?;
+        for req in INIT_DB {
+            conn.execute(req, ()).map_err(db_err)?;
+        }
+
         Ok(Database(conn))
     }
 
@@ -92,13 +106,34 @@ impl Database {
         Ok(())
     }
 
-    /// Append a child to an item
-    pub fn append_child(&mut self, parent_pn: &str, child_pn: &str, quantity: usize) -> Result<()> {
+    /// Get `Item` by it's PN
+    pub fn get_item(&self, pn: &str) -> Result<Item> {
+        let mut stmt = self
+            .0
+            .prepare("SELECT id, pn, name FROM items WHERE pn = ?1")
+            .map_err(db_err)?;
+        let items = stmt
+            .query_map([pn], |row| {
+                Ok(Item {
+                    _id: row.get(0)?,
+                    pn: row.get(1)?,
+                    name: row.get(2)?,
+                })
+            })
+            .map_err(db_err)?
+            .filter_map(|i| i.ok())
+            .collect::<Vec<_>>();
+        assert_eq!(1, items.len());
+        Ok(*items.get(0).unwrap())
+    }
+
+    /// Add a child to an item
+    pub fn add_child(&mut self, parent: &Item, child: &Item, quantity: usize) -> Result<()> {
         if self
             .0
             .execute(
                 "INSERT INTO children (id_parent, id_child, quantity) VALUES(?1, ?2, ?3)",
-                (parent_pn, child_pn, quantity),
+                (parent._id, child._id, quantity),
             )
             .map_err(db_err)?
             != 1
@@ -106,6 +141,29 @@ impl Database {
             return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
         }
         Ok(())
+    }
+
+    /// Get children of an item
+    pub fn get_children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
+        let mut stmt = self
+            .0
+            .prepare("SELECT id, pn, name, quantity FROM view_children WHERE id_parent = ?1")
+            .map_err(db_err)?;
+        let items = stmt
+            .query_map([parent._id], |row| {
+                Ok((
+                    Item {
+                        _id: row.get(0)?,
+                        pn: row.get(1)?,
+                        name: row.get(2)?,
+                    },
+                    row.get(3)?,
+                ))
+            })
+            .map_err(db_err)?
+            .filter_map(|i| i.ok())
+            .collect::<Vec<_>>();
+        Ok(items)
     }
 }
 
@@ -115,13 +173,27 @@ mod test {
 
     #[test]
     fn init_database() {
-        let db = Database::open(":memory:");
-        assert!(db.is_ok());
-        let db = db.unwrap();
+        assert!(Database::open(":memory:").is_ok());
+    }
+
+    #[test]
+    fn add_items() {
+        let db = Database::open(":memory:").unwrap();
         assert!(db.insert_item("PN1", "NAME1").is_ok());
         let items = db.get_items();
         assert!(items.is_ok());
         let items = items.unwrap();
         assert_eq!(1, items.len());
+    }
+
+    #[test]
+    fn add_childrens() {
+        let mut db = Database::open(":memory:").unwrap();
+        let item1 = db.insert_item("1", "PARENT").unwrap();
+        let item2 = db.insert_item("11", "CHILD1").unwrap();
+        let item3 = db.insert_item("12", "CHILD2").unwrap();
+        db.add_child(&item1, &item2, 1);
+        db.add_child(&item1, &item3, 2);
+        let children = db.get_children(&item1).unwrap();
     }
 }
