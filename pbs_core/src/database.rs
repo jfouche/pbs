@@ -1,13 +1,7 @@
+use crate::{Error, Result};
 use rusqlite::Connection;
 
 pub struct Database(Connection);
-
-#[derive(Debug)]
-pub enum Error {
-    DatabaseErr(rusqlite::Error),
-}
-
-pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub struct Item {
     _id: usize,
@@ -17,7 +11,7 @@ pub struct Item {
 
 /// TODO : use this trait
 impl<'stmt> TryFrom<rusqlite::Row<'stmt>> for Item {
-    type Error = Error;
+    type Error = crate::Error;
     fn try_from(value: rusqlite::Row) -> std::result::Result<Self, Self::Error> {
         Ok(Item {
             _id: value.get("id").convert()?,
