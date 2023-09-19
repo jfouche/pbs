@@ -12,6 +12,7 @@ pub enum Command {
     Add(AddParams),
     AddChild(AddChildParams),
     List,
+    Help,
     Exit,
 }
 
@@ -50,7 +51,7 @@ pub struct AddChildParams {
 
 /// Get the command of the input
 pub fn get_command(input: &str) -> IResult<&str, Command> {
-    alt((cmd_add, cmd_list, cmd_add_child, cmd_exit))(input.trim())
+    alt((cmd_add, cmd_list, cmd_add_child, cmd_help, cmd_exit))(input.trim())
 }
 
 fn pn(input: &str) -> IResult<&str, &str> {
@@ -88,6 +89,13 @@ fn cmd_exit(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("exit")(input)?;
     let (input, _) = eof(input)?;
     Ok((input, Command::Exit))
+}
+
+/// help
+fn cmd_help(input: &str) -> IResult<&str, Command> {
+    let (input, _) = tag("help")(input)?;
+    let (input, _) = eof(input)?;
+    Ok((input, Command::Help))
 }
 
 /// `add-child <parent-pn> <child-pn> <quantity>`

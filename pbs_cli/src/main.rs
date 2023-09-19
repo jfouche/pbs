@@ -9,6 +9,13 @@ mod parser;
 
 const STORE_URI: &str = "store.db3";
 
+const COMMANDS: &str = r#"
+ - help                                           This help
+ - exit                                           Exit the pbs CLI
+ - add <PART_NUMBER> <NAME>                       Add a item to the store
+ - list                                           List all items in the store
+ - add-child <PARENT_PN> <PARENT_PN> <QUANTITY>   Add a child item to an parent item"#;
+
 trait PbsCli {
     fn handle_cmd(&mut self, command: Command);
     fn handle_add(&mut self, params: AddParams);
@@ -71,6 +78,7 @@ fn main() -> Result<()> {
             Ok(_) => match get_command(&input) {
                 Ok((_, cmd)) => match cmd {
                     Command::Exit => break,
+                    Command::Help => println!("HELP {}", COMMANDS),
                     command => store.handle_cmd(command),
                 },
                 Err(err) => println!("ERROR : {}", err),

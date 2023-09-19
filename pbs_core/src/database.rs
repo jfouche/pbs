@@ -133,6 +133,7 @@ impl Database {
         let mut rows = stmt.query([pn]).convert()?;
         let row1 = rows.next().convert()?;
         let row1 = row1.ok_or(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows))?;
+        // TODO        let item: Result<Item> = row1.try_into();
         Ok(Item {
             _id: row1.get(0).convert()?,
             pn: row1.get(1).convert()?,
