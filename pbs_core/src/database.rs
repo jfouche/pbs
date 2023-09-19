@@ -1,6 +1,13 @@
-use rusqlite::*;
+use rusqlite::Connection;
 
 pub struct Database(Connection);
+
+#[derive(Debug)]
+pub enum Error {
+    DatabaseErr(rusqlite::Error),
+}
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub struct Item {
     _id: usize,
@@ -8,15 +15,26 @@ pub struct Item {
     pub name: String,
 }
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-#[derive(Debug)]
-pub enum Error {
-    DatabaseErr(rusqlite::Error),
+/// TODO : use this trait
+impl<'stmt> TryFrom<rusqlite::Row<'stmt>> for Item {
+    type Error = Error;
+    fn try_from(value: rusqlite::Row) -> std::result::Result<Self, Self::Error> {
+        Ok(Item {
+            _id: value.get("id").convert()?,
+            pn: value.get("pn").convert()?,
+            name: value.get("name").convert()?,
+        })
+    }
 }
 
-fn db_err(e: rusqlite::Error) -> Error {
-    Error::DatabaseErr(e)
+trait ErrConvert<T> {
+    fn convert(self) -> Result<T>;
+}
+
+impl<T> ErrConvert<T> for rusqlite::Result<T> {
+    fn convert(self) -> Result<T> {
+        self.map_err(Error::DatabaseErr)
+    }
 }
 
 const INIT_DB: [&str; 4] = [
@@ -47,9 +65,9 @@ const INIT_DB: [&str; 4] = [
 impl Database {
     /// Open the store
     pub fn open(url: &str) -> Result<Self> {
-        let conn = Connection::open(url).map_err(db_err)?;
+        let conn = Connection::open(url).convert()?;
         for req in INIT_DB {
-            conn.execute(req, ()).map_err(db_err)?;
+            conn.execute(req, ()).convert()?;
         }
 
         Ok(Database(conn))
@@ -62,7 +80,7 @@ impl Database {
                 "INSERT INTO items(pn, name) VALUES(?1, ?2)",
                 [pn.to_string(), name.to_string()],
             )
-            .map_err(db_err)?;
+            .convert()?;
         let id = self.0.last_insert_rowid();
         Ok(Item {
             _id: id as usize,
@@ -72,10 +90,7 @@ impl Database {
     }
 
     pub fn get_items(&self) -> Result<Vec<Item>> {
-        let mut stmt = self
-            .0
-            .prepare("SELECT id, pn, name FROM items")
-            .map_err(db_err)?;
+        let mut stmt = self.0.prepare("SELECT id, pn, name FROM items").convert()?;
         let items = stmt
             .query_map([], |row| {
                 Ok(Item {
@@ -84,7 +99,7 @@ impl Database {
                     name: row.get(2)?,
                 })
             })
-            .map_err(db_err)?
+            .convert()?
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
         Ok(items)
@@ -98,7 +113,7 @@ impl Database {
                 "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
                 (&item.pn, &item.name, item._id),
             )
-            .map_err(db_err)?
+            .convert()?
             != 1
         {
             return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
@@ -107,24 +122,22 @@ impl Database {
     }
 
     /// Get `Item` by it's PN
-    pub fn get_item(&self, pn: &str) -> Result<Item> {
+    ///
+    /// WARNING : this function returns the 1st result (but there
+    /// should be only 1 result)
+    pub fn get_item_by_pn(&self, pn: &str) -> Result<Item> {
         let mut stmt = self
             .0
             .prepare("SELECT id, pn, name FROM items WHERE pn = ?1")
-            .map_err(db_err)?;
-        let items = stmt
-            .query_map([pn], |row| {
-                Ok(Item {
-                    _id: row.get(0)?,
-                    pn: row.get(1)?,
-                    name: row.get(2)?,
-                })
-            })
-            .map_err(db_err)?
-            .filter_map(|i| i.ok())
-            .collect::<Vec<_>>();
-        assert_eq!(1, items.len());
-        Ok(*items.get(0).unwrap())
+            .convert()?;
+        let mut rows = stmt.query([pn]).convert()?;
+        let row1 = rows.next().convert()?;
+        let row1 = row1.ok_or(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows))?;
+        Ok(Item {
+            _id: row1.get(0).convert()?,
+            pn: row1.get(1).convert()?,
+            name: row1.get(2).convert()?,
+        })
     }
 
     /// Add a child to an item
@@ -135,7 +148,7 @@ impl Database {
                 "INSERT INTO children (id_parent, id_child, quantity) VALUES(?1, ?2, ?3)",
                 (parent._id, child._id, quantity),
             )
-            .map_err(db_err)?
+            .convert()?
             != 1
         {
             return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
@@ -148,7 +161,7 @@ impl Database {
         let mut stmt = self
             .0
             .prepare("SELECT id, pn, name, quantity FROM view_children WHERE id_parent = ?1")
-            .map_err(db_err)?;
+            .convert()?;
         let items = stmt
             .query_map([parent._id], |row| {
                 Ok((
@@ -160,7 +173,7 @@ impl Database {
                     row.get(3)?,
                 ))
             })
-            .map_err(db_err)?
+            .convert()?
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
         Ok(items)
@@ -192,8 +205,9 @@ mod test {
         let item1 = db.insert_item("1", "PARENT").unwrap();
         let item2 = db.insert_item("11", "CHILD1").unwrap();
         let item3 = db.insert_item("12", "CHILD2").unwrap();
-        db.add_child(&item1, &item2, 1);
-        db.add_child(&item1, &item3, 2);
+        db.add_child(&item1, &item2, 1).unwrap();
+        db.add_child(&item1, &item3, 2).unwrap();
         let children = db.get_children(&item1).unwrap();
+        assert_eq!(2, children.len());
     }
 }

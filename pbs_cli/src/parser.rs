@@ -10,7 +10,7 @@ use nom::{
 #[derive(PartialEq, Eq, Debug)]
 pub enum Command {
     Add(AddParams),
-    AppendChild(AppendChildParams),
+    AddChild(AddChildParams),
     List,
     Exit,
 }
@@ -22,7 +22,7 @@ pub struct AddParams {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct AppendChildParams {
+pub struct AddChildParams {
     pub parent_pn: String,
     pub child_pn: String,
     pub quantity: usize,
@@ -50,7 +50,7 @@ pub struct AppendChildParams {
 
 /// Get the command of the input
 pub fn get_command(input: &str) -> IResult<&str, Command> {
-    alt((cmd_add, cmd_list, cmd_append_child, cmd_exit))(input.trim())
+    alt((cmd_add, cmd_list, cmd_add_child, cmd_exit))(input.trim())
 }
 
 fn pn(input: &str) -> IResult<&str, &str> {
@@ -90,9 +90,9 @@ fn cmd_exit(input: &str) -> IResult<&str, Command> {
     Ok((input, Command::Exit))
 }
 
-/// `append-child <parent-pn> <child-pn> <quantity>`
-fn cmd_append_child(input: &str) -> IResult<&str, Command> {
-    let (input, _) = tag("append-child")(input)?;
+/// `add-child <parent-pn> <child-pn> <quantity>`
+fn cmd_add_child(input: &str) -> IResult<&str, Command> {
+    let (input, _) = tag("add-child")(input)?;
     let (input, _) = space1(input)?;
     let (input, parent_pn) = pn(input)?;
     let (input, _) = space1(input)?;
@@ -100,12 +100,12 @@ fn cmd_append_child(input: &str) -> IResult<&str, Command> {
     let (input, _) = space1(input)?;
     let (input, quantity) = quantity(input)?;
     let (input, _) = eof(input)?;
-    let params = AppendChildParams {
+    let params = AddChildParams {
         parent_pn: parent_pn.to_string(),
         child_pn: child_pn.to_string(),
         quantity,
     };
-    Ok((input, Command::AppendChild(params)))
+    Ok((input, Command::AddChild(params)))
 }
 
 /// =================================================================

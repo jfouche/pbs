@@ -39,10 +39,12 @@ impl Store {
 
     pub fn add_child(
         &mut self,
-        parent: &Item,
-        child: &Item,
+        parent_pn: &str,
+        child_pn: &str,
         quantity: usize,
     ) -> database::Result<()> {
-        self.db.add_child(parent, child, quantity)
+        let parent_item = self.db.get_item_by_pn(parent_pn)?;
+        let child_item = self.db.get_item_by_pn(child_pn)?;
+        self.db.add_child(&parent_item, &child_item, quantity)
     }
 }
