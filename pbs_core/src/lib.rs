@@ -33,10 +33,12 @@ impl Store {
         self.db.update_item(item)
     }
 
+    /// Get all items
     pub fn get_items(&self) -> database::Result<Vec<Item>> {
         self.db.get_items()
     }
 
+    /// Add a child to an item
     pub fn add_child(
         &mut self,
         parent_pn: &str,
@@ -46,5 +48,11 @@ impl Store {
         let parent_item = self.db.get_item_by_pn(parent_pn)?;
         let child_item = self.db.get_item_by_pn(child_pn)?;
         self.db.add_child(&parent_item, &child_item, quantity)
+    }
+
+    // Get all item children
+    pub fn get_children(&self, pn: &str) -> database::Result<Vec<(Item, usize)>> {
+        let item = self.db.get_item_by_pn(pn)?;
+        self.db.get_children(&item)
     }
 }

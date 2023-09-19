@@ -12,6 +12,7 @@ pub enum Command {
     Add(AddParams),
     AddChild(AddChildParams),
     List,
+    Tree(TreeParams),
     Help,
     Exit,
 }
@@ -27,6 +28,11 @@ pub struct AddChildParams {
     pub parent_pn: String,
     pub child_pn: String,
     pub quantity: usize,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct TreeParams {
+    pub pn: String,
 }
 
 // #[derive(PartialEq, Eq, Debug)]
@@ -51,7 +57,14 @@ pub struct AddChildParams {
 
 /// Get the command of the input
 pub fn get_command(input: &str) -> IResult<&str, Command> {
-    alt((cmd_add, cmd_list, cmd_add_child, cmd_help, cmd_exit))(input.trim())
+    alt((
+        cmd_add,
+        cmd_list,
+        cmd_add_child,
+        cmd_tree,
+        cmd_help,
+        cmd_exit,
+    ))(input.trim())
 }
 
 fn pn(input: &str) -> IResult<&str, &str> {
@@ -62,7 +75,7 @@ fn quantity(input: &str) -> IResult<&str, usize> {
     map_res(digit1, |s: &str| s.parse::<usize>())(input)
 }
 
-/// add <pn> <name>
+/// `add <pn> <name>`
 fn cmd_add(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add")(input)?;
     let (input, _) = space1(input)?;
@@ -77,14 +90,14 @@ fn cmd_add(input: &str) -> IResult<&str, Command> {
     Ok((input, Command::Add(params)))
 }
 
-/// list
+/// `list`
 fn cmd_list(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("list")(input)?;
     let (input, _) = eof(input)?;
     Ok((input, Command::List))
 }
 
-/// exit
+/// `exit`
 fn cmd_exit(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("exit")(input)?;
     let (input, _) = eof(input)?;
@@ -96,6 +109,16 @@ fn cmd_help(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("help")(input)?;
     let (input, _) = eof(input)?;
     Ok((input, Command::Help))
+}
+
+/// `tree <pn>`
+fn cmd_tree(input: &str) -> IResult<&str, Command> {
+    let (input, _) = tag("tree")(input)?;
+    let (input, _) = space1(input)?;
+    let (input, pn) = pn(input)?;
+    let (input, _) = eof(input)?;
+    let params = TreeParams { pn: pn.to_string() };
+    Ok((input, Command::Tree(params)))
 }
 
 /// `add-child <parent-pn> <child-pn> <quantity>`
