@@ -9,14 +9,13 @@ pub struct Item {
     pub name: String,
 }
 
-/// TODO : use this trait
-impl<'stmt> TryFrom<rusqlite::Row<'stmt>> for Item {
-    type Error = crate::Error;
-    fn try_from(value: rusqlite::Row) -> std::result::Result<Self, Self::Error> {
+impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
+    type Error = rusqlite::Error;
+    fn try_from(value: &rusqlite::Row) -> std::result::Result<Self, Self::Error> {
         Ok(Item {
-            _id: value.get("id").convert()?,
-            pn: value.get("pn").convert()?,
-            name: value.get("name").convert()?,
+            _id: value.get("id")?,
+            pn: value.get("pn")?,
+            name: value.get("name")?,
         })
     }
 }
@@ -86,13 +85,7 @@ impl Database {
     pub fn get_items(&self) -> Result<Vec<Item>> {
         let mut stmt = self.0.prepare("SELECT id, pn, name FROM items").convert()?;
         let items = stmt
-            .query_map([], |row| {
-                Ok(Item {
-                    _id: row.get(0)?,
-                    pn: row.get(1)?,
-                    name: row.get(2)?,
-                })
-            })
+            .query_map([], |row| Item::try_from(row))
             .convert()?
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
@@ -125,14 +118,11 @@ impl Database {
             .prepare("SELECT id, pn, name FROM items WHERE pn = ?1")
             .convert()?;
         let mut rows = stmt.query([pn]).convert()?;
-        let row1 = rows.next().convert()?;
-        let row1 = row1.ok_or(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows))?;
-        // TODO        let item: Result<Item> = row1.try_into();
-        Ok(Item {
-            _id: row1.get(0).convert()?,
-            pn: row1.get(1).convert()?,
-            name: row1.get(2).convert()?,
-        })
+        let row1 = rows
+            .next()
+            .convert()?
+            .ok_or(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows))?;
+        Item::try_from(row1).convert()
     }
 
     /// Add a child to an item
@@ -159,14 +149,9 @@ impl Database {
             .convert()?;
         let items = stmt
             .query_map([parent._id], |row| {
-                Ok((
-                    Item {
-                        _id: row.get(0)?,
-                        pn: row.get(1)?,
-                        name: row.get(2)?,
-                    },
-                    row.get(3)?,
-                ))
+                let item = Item::try_from(row)?;
+                let quantity = row.get("quantity")?;
+                Ok((item, quantity))
             })
             .convert()?
             .filter_map(|i| i.ok())
