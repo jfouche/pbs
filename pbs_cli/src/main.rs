@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use parser::{AddChildParams, AddParams, TreeParams, WhereUsedParams};
+use parser::{AddChildParams, AddParams, StockParams, TreeParams, WhereUsedParams};
 use pbs_core::{Result, Store};
 
 use crate::parser::{get_command, Command};
@@ -44,6 +44,7 @@ impl PbsCli {
             Command::AddChild(params) => self.handle_add_child(params),
             Command::Tree(params) => self.handle_tree(params),
             Command::WhereUsed(params) => self.handle_where_used(params),
+            Command::Stock(params) => self.handle_stock(params),
             Command::Exit | Command::Help => {}
         }
     }
@@ -98,6 +99,17 @@ impl PbsCli {
     }
     fn handle_where_used(&self, params: WhereUsedParams) {
         match self.store.where_used(&params.pn) {
+            Ok(parents) => {
+                for item in parents {
+                    println!("  - item {pn}\t{name}", pn = item.pn, name = item.name);
+                }
+            }
+            Err(e) => eprintln!("ERROR : {:?}", e),
+        }
+    }
+
+    fn handle_stock(&self, params: StockParams) {
+        match self.store.get_stock(&params.pn) {
             Ok(parents) => {
                 for item in parents {
                     println!("  - item {pn}\t{name}", pn = item.pn, name = item.name);

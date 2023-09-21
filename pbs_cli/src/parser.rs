@@ -15,6 +15,7 @@ pub enum Command {
     List,
     Tree(TreeParams),
     WhereUsed(WhereUsedParams),
+    Stock(StockParams),
     Help,
     Exit,
 }
@@ -46,25 +47,11 @@ pub struct WhereUsedParams {
     pub pn: String,
 }
 
-// #[derive(PartialEq, Eq, Debug)]
-// pub enum PbsParserError {
-//     MissingPartNumber,
-//     MissingName,
-//     TooManyParams,
-// }
-
-// impl ParseError<&str> for PbsParserError {
-//     fn from_error_kind(input: &str, kind: nom::error::ErrorKind) -> Self {}
-//     fn append(input: &str, kind: nom::error::ErrorKind, other: Self) -> Self {}
-// }
-
-// //type ErrorTranslator = Fn(nom::error::Error<&str>) -> ParserError;
-
-// fn missing_pn(_: nom::error::Error<&str>) -> impl Fn(nom::error::Error<&str>) -> ParserError {
-//     |_: nom::error::Error<&str>| ParserError::MissingPartNumber
-// }
-
-// type CResult<'a> = IResult<&'a str, Command, ParserError>;
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct StockParams {
+    pub pn: String,
+}
 
 /// Get the command of the input
 pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&str>>> {
@@ -76,11 +63,16 @@ pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&s
         cmd_help,
         cmd_exit,
         cmd_where_used,
+        cmd_stock,
     ))(input.trim())
     .map(|(_, cmd)| cmd)
 }
 
 fn pn(input: &str) -> IResult<&str, &str> {
+    alphanumeric1(input)
+}
+
+fn name(input: &str) -> IResult<&str, &str> {
     alphanumeric1(input)
 }
 
@@ -98,7 +90,7 @@ fn eol(input: &str) -> IResult<&str, ()> {
 fn cmd_add(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add")(input)?;
     let (input, pn) = preceded(space1, pn)(input)?;
-    let (input, name) = preceded(space1, alphanumeric1)(input)?;
+    let (input, name) = preceded(space1, name)(input)?;
     let _ = eol(input)?;
     let params = AddParams {
         pn: pn.to_string(),
@@ -156,6 +148,15 @@ fn cmd_add_child(input: &str) -> IResult<&str, Command> {
         quantity,
     };
     Ok((input, Command::AddChild(params)))
+}
+
+/// `stock <pn>`
+fn cmd_stock(input: &str) -> IResult<&str, Command> {
+    let (input, _) = tag("stock")(input)?;
+    let (input, pn) = preceded(space1, pn)(input)?;
+    let _ = eol(input)?;
+    let params = StockParams { pn: pn.to_string() };
+    Ok((input, Command::Stock(params)))
 }
 
 /// =================================================================

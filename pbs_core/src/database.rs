@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use crate::{Error, Result};
 use rusqlite::Connection;
 
@@ -7,6 +9,20 @@ pub struct Item {
     _id: usize,
     pub pn: String,
     pub name: String,
+}
+
+impl PartialEq for Item {
+    fn eq(&self, other: &Self) -> bool {
+        self._id == other._id
+    }
+}
+
+impl Eq for Item {}
+
+impl Hash for Item {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self._id.hash(state);
+    }
 }
 
 impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
