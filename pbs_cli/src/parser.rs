@@ -128,7 +128,7 @@ fn cmd_add_child(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add-child")(input)?;
     let (input, parent_pn) = preceded(space1, pn)(input)?;
     let (input, child_pn) = preceded(space1, pn)(input)?;
-    let (input, quantity) = quantity(input)?;
+    let (input, quantity) = preceded(space1, quantity)(input)?;
     let _ = eol(input)?;
     let params = AddChildParams {
         parent_pn: parent_pn.to_string(),
@@ -184,6 +184,19 @@ mod tests {
         assert_eq!(
             Command::Tree(TreeParams {
                 pn: "PN".to_string(),
+            }),
+            cmd
+        );
+    }
+
+    #[test]
+    fn test_add_child() {
+        let cmd = get_command("\t add-child \t PN1 \t   PN2\t  456 \t ").unwrap();
+        assert_eq!(
+            Command::AddChild(AddChildParams {
+                parent_pn: "PN1".to_string(),
+                child_pn: "PN2".to_string(),
+                quantity: 456
             }),
             cmd
         );
