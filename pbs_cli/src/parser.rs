@@ -46,26 +46,6 @@ pub struct WhereUsedParams {
     pub pn: String,
 }
 
-// #[derive(PartialEq, Eq, Debug)]
-// pub enum PbsParserError {
-//     MissingPartNumber,
-//     MissingName,
-//     TooManyParams,
-// }
-
-// impl ParseError<&str> for PbsParserError {
-//     fn from_error_kind(input: &str, kind: nom::error::ErrorKind) -> Self {}
-//     fn append(input: &str, kind: nom::error::ErrorKind, other: Self) -> Self {}
-// }
-
-// //type ErrorTranslator = Fn(nom::error::Error<&str>) -> ParserError;
-
-// fn missing_pn(_: nom::error::Error<&str>) -> impl Fn(nom::error::Error<&str>) -> ParserError {
-//     |_: nom::error::Error<&str>| ParserError::MissingPartNumber
-// }
-
-// type CResult<'a> = IResult<&'a str, Command, ParserError>;
-
 /// Get the command of the input
 pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&str>>> {
     alt((
@@ -119,7 +99,7 @@ fn cmd_exit(input: &str) -> IResult<&str, Command> {
     Ok((input, Command::Exit))
 }
 
-/// help
+/// `help`
 fn cmd_help(input: &str) -> IResult<&str, Command> {
     let _ = tuple((tag("help"), eol))(input)?;
     Ok((input, Command::Help))
@@ -165,39 +145,47 @@ fn cmd_add_child(input: &str) -> IResult<&str, Command> {
 mod tests {
     use super::*;
 
-    fn assert_is(cmd: Command, input: &str) {
-        let res = get_command(input);
-        assert!(res.is_ok());
-        assert_eq!(cmd, res.unwrap());
+    #[test]
+    fn test_list_ok() {
+        assert_eq!(Command::List, get_command("list").unwrap());
+        assert_eq!(Command::List, get_command("  list").unwrap());
+        assert_eq!(Command::List, get_command("  \tlist \t ").unwrap());
     }
 
     #[test]
     fn test_exit_ok() {
-        assert_is(Command::Exit, "exit");
-        assert_is(Command::Exit, "  exit");
-        assert_is(Command::Exit, "  exit  ");
+        assert_eq!(Command::Exit, get_command("exit").unwrap());
+        assert_eq!(Command::Exit, get_command("  exit").unwrap());
+        assert_eq!(Command::Exit, get_command("  exit  ").unwrap());
     }
 
     #[test]
     fn test_exit_err() {
-        let res = get_command("exi");
-        assert!(res.is_err());
-        let res = get_command("exitt");
-        assert!(res.is_err());
+        assert!(get_command("exi").is_err());
+        assert!(get_command("exit4").is_err());
+        assert!(get_command("exit 4").is_err());
     }
 
     #[test]
     fn test_add_ok() {
-        let res = get_command("\t add \t PN \t   NAME  ");
-        assert!(res.is_ok(), "{res:?}");
-        if let Ok(cmd) = res {
-            match cmd {
-                Command::Add(params) => {
-                    assert_eq!("PN".to_string(), params.pn);
-                    assert_eq!("NAME".to_string(), params.name);
-                }
-                _ => panic!("Bad command : {cmd:?}"),
-            }
-        }
+        let cmd = get_command("\t add \t PN \t   NAME  ").unwrap();
+        assert_eq!(
+            Command::Add(AddParams {
+                pn: "PN".to_string(),
+                name: "NAME".to_string()
+            }),
+            cmd
+        );
+    }
+
+    #[test]
+    fn test_tree_ok() {
+        let cmd = get_command("\t tree \t PN \t  ").unwrap();
+        assert_eq!(
+            Command::Tree(TreeParams {
+                pn: "PN".to_string(),
+            }),
+            cmd
+        );
     }
 }
