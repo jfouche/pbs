@@ -13,6 +13,7 @@ pub enum Command {
     AddChild(AddChildParams),
     List,
     Tree(TreeParams),
+    WhereUsed(WhereUsedParams),
     Help,
     Exit,
 }
@@ -32,6 +33,11 @@ pub struct AddChildParams {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct TreeParams {
+    pub pn: String,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct WhereUsedParams {
     pub pn: String,
 }
 
@@ -56,7 +62,7 @@ pub struct TreeParams {
 // type CResult<'a> = IResult<&'a str, Command, ParserError>;
 
 /// Get the command of the input
-pub fn get_command(input: &str) -> IResult<&str, Command> {
+pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&str>>> {
     alt((
         cmd_add,
         cmd_list,
@@ -64,7 +70,9 @@ pub fn get_command(input: &str) -> IResult<&str, Command> {
         cmd_tree,
         cmd_help,
         cmd_exit,
+        cmd_where_used,
     ))(input.trim())
+    .map(|(_, cmd)| cmd)
 }
 
 fn pn(input: &str) -> IResult<&str, &str> {
@@ -121,6 +129,16 @@ fn cmd_tree(input: &str) -> IResult<&str, Command> {
     Ok((input, Command::Tree(params)))
 }
 
+/// `where-used <pn>`
+fn cmd_where_used(input: &str) -> IResult<&str, Command> {
+    let (input, _) = tag("where-used")(input)?;
+    let (input, _) = space1(input)?;
+    let (input, pn) = pn(input)?;
+    let (input, _) = eof(input)?;
+    let params = WhereUsedParams { pn: pn.to_string() };
+    Ok((input, Command::WhereUsed(params)))
+}
+
 /// `add-child <parent-pn> <child-pn> <quantity>`
 fn cmd_add_child(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add-child")(input)?;
@@ -149,7 +167,7 @@ mod tests {
     fn assert_is(cmd: Command, input: &str) {
         let res = get_command(input);
         assert!(res.is_ok());
-        assert_eq!(cmd, res.unwrap().1);
+        assert_eq!(cmd, res.unwrap());
     }
 
     #[test]
@@ -171,7 +189,7 @@ mod tests {
     fn test_add_ok() {
         let res = get_command("\t add \t PN \t   NAME  ");
         assert!(res.is_ok(), "{res:?}");
-        if let Ok((_, cmd)) = res {
+        if let Ok(cmd) = res {
             match cmd {
                 Command::Add(params) => {
                     assert_eq!("PN".to_string(), params.pn);

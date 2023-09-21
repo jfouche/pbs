@@ -30,7 +30,7 @@ impl<T> ErrConvert<T> for rusqlite::Result<T> {
     }
 }
 
-const INIT_DB: [&str; 4] = [
+const INIT_DB: [&str; 5] = [
     "PRAGMA foreign_keys = ON;",
     "CREATE TABLE IF NOT EXISTS items(
         id   INTEGER PRIMARY KEY,
@@ -53,6 +53,14 @@ const INIT_DB: [&str; 4] = [
             children.quantity 
         FROM items, children 
         WHERE children.id_child = items.id",
+    "CREATE VIEW IF NOT EXISTS view_where_used AS
+    SELECT
+            children.id_parent as id,
+            items.pn, 
+            items.name,
+            children.id_child
+        FROM items, children 
+        WHERE children.id_parent = items.id",
 ];
 
 impl Database {
@@ -153,6 +161,20 @@ impl Database {
                 let quantity = row.get("quantity")?;
                 Ok((item, quantity))
             })
+            .convert()?
+            .filter_map(|i| i.ok())
+            .collect::<Vec<_>>();
+        Ok(items)
+    }
+
+    ///
+    pub fn where_used(&self, item: &Item) -> Result<Vec<Item>> {
+        let mut stmt = self
+            .0
+            .prepare("SELECT id, pn, name FROM view_where_used WHERE id_child = ?1")
+            .convert()?;
+        let items = stmt
+            .query_map([item._id], |row| Item::try_from(row))
             .convert()?
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();

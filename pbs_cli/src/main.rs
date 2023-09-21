@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use parser::{AddChildParams, AddParams, TreeParams};
+use parser::{AddChildParams, AddParams, TreeParams, WhereUsedParams};
 use pbs_core::{Result, Store};
 
 use crate::parser::{get_command, Command};
@@ -15,36 +15,48 @@ const COMMANDS: &str = r#"
  - add <PART_NUMBER> <NAME>                       Add a item to the store
  - list                                           List all items in the store
  - add-child <PARENT_PN> <CHILD_PN> <QUANTITY>    Add a child item to an parent item
- - tree <PN>                                      Show the children of an item"#;
+ - tree <PN>                                      Show the children of an item
+ - where-used <PN>                                Show all items where the given <PN> is used"#;
 
-trait PbsCli {
-    fn handle_cmd(&mut self, command: Command);
-    fn handle_add(&mut self, params: AddParams);
-    fn handle_list(&self);
-    fn handle_add_child(&mut self, params: AddChildParams);
-    fn handle_tree(&self, params: TreeParams);
+struct PbsCli {
+    store: Store,
 }
 
-impl PbsCli for Store {
+impl PbsCli {
+    fn new() -> Result<Self> {
+        Ok(PbsCli {
+            store: Store::open(STORE_URI)?,
+        })
+    }
+
+    fn prompt(&self) -> io::Result<String> {
+        print!("pbs]] ");
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        Ok(input)
+    }
+
     fn handle_cmd(&mut self, cmd: Command) {
         match cmd {
             Command::Add(params) => self.handle_add(params),
             Command::List => self.handle_list(),
             Command::AddChild(params) => self.handle_add_child(params),
             Command::Tree(params) => self.handle_tree(params),
-            _ => {}
+            Command::WhereUsed(params) => self.handle_where_used(params),
+            Command::Exit | Command::Help => {}
         }
     }
 
     fn handle_add(&mut self, params: AddParams) {
-        match self.new_item(&params.pn, &params.name) {
+        match self.store.new_item(&params.pn, &params.name) {
             Ok(item) => println!("  added item {}", item.name),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
 
     fn handle_list(&self) {
-        match self.get_items() {
+        match self.store.get_items() {
             Ok(items) => {
                 // Get the max size of PN
                 let max_pn_len = items.iter().map(|i| i.pn.len()).max().unwrap_or(0);
@@ -62,13 +74,16 @@ impl PbsCli for Store {
     }
 
     fn handle_add_child(&mut self, params: AddChildParams) {
-        if let Err(e) = self.add_child(&params.parent_pn, &params.child_pn, params.quantity) {
+        if let Err(e) = self
+            .store
+            .add_child(&params.parent_pn, &params.child_pn, params.quantity)
+        {
             eprintln!("ERROR: {:?}", e);
         }
     }
 
     fn handle_tree(&self, params: TreeParams) {
-        match self.get_children(&params.pn) {
+        match self.store.get_children(&params.pn) {
             Ok(children) => {
                 for (item, quantity) in children {
                     println!(
@@ -81,21 +96,27 @@ impl PbsCli for Store {
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
+    fn handle_where_used(&self, params: WhereUsedParams) {
+        match self.store.where_used(&params.pn) {
+            Ok(parents) => {
+                for item in parents {
+                    println!("  - item {pn}\t{name}", pn = item.pn, name = item.name);
+                }
+            }
+            Err(e) => eprintln!("ERROR : {:?}", e),
+        }
+    }
 }
 
 fn main() -> Result<()> {
-    let mut store = Store::open(STORE_URI)?;
+    let mut pbs_cli = PbsCli::new()?;
     loop {
-        print!("pbs> ");
-        io::stdout().flush().unwrap();
-
-        let mut input = String::new();
-        match io::stdin().read_line(&mut input) {
-            Ok(_) => match get_command(&input) {
-                Ok((_, cmd)) => match cmd {
+        match pbs_cli.prompt() {
+            Ok(input) => match get_command(&input) {
+                Ok(cmd) => match cmd {
                     Command::Exit => break,
                     Command::Help => println!("HELP {}", COMMANDS),
-                    command => store.handle_cmd(command),
+                    command => pbs_cli.handle_cmd(command),
                 },
                 Err(err) => println!("ERROR : {}", err),
             },

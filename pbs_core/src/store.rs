@@ -33,9 +33,15 @@ impl Store {
         self.db.add_child(&parent_item, &child_item, quantity)
     }
 
-    // Get all item children
+    // Get all items children
     pub fn get_children(&self, pn: &str) -> Result<Vec<(Item, usize)>> {
         let item = self.db.get_item_by_pn(pn)?;
         self.db.get_children(&item)
+    }
+
+    // Get all parent items using the given item
+    pub fn where_used(&self, pn: &str) -> Result<Vec<Item>> {
+        let item = self.db.get_item_by_pn(pn)?;
+        self.db.where_used(&item)
     }
 }
