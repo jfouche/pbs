@@ -115,12 +115,12 @@ fn main() -> Result<()> {
             Ok(input) => match get_command(&input) {
                 Ok(cmd) => match cmd {
                     Command::Exit => break,
-                    Command::Help => println!("HELP {}", COMMANDS),
+                    Command::Help => println!("PBS CLI commands: {}", COMMANDS),
                     command => pbs_cli.handle_cmd(command),
                 },
-                Err(err) => println!("ERROR : {}", err),
+                Err(err) => eprintln!("ERROR : {}", err),
             },
-            Err(err) => println!("ERROR : {}", err),
+            Err(err) => eprintln!("ERROR : {}", err),
         }
     }
     Ok(())

@@ -1,13 +1,14 @@
 use nom::{
     branch::alt,
     bytes::streaming::tag,
-    character::complete::{alphanumeric1, digit1, space1},
+    character::complete::{alphanumeric1, digit1, space0, space1},
     combinator::{eof, map_res},
-    // error::ParseError,
+    sequence::{preceded, tuple},
     IResult,
 };
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Command {
     Add(AddParams),
     AddChild(AddChildParams),
@@ -18,25 +19,29 @@ pub enum Command {
     Exit,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct AddParams {
     pub pn: String,
     pub name: String,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct AddChildParams {
     pub parent_pn: String,
     pub child_pn: String,
     pub quantity: usize,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct TreeParams {
     pub pn: String,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct WhereUsedParams {
     pub pn: String,
 }
@@ -83,14 +88,18 @@ fn quantity(input: &str) -> IResult<&str, usize> {
     map_res(digit1, |s: &str| s.parse::<usize>())(input)
 }
 
+fn eol(input: &str) -> IResult<&str, ()> {
+    space0(input)?;
+    eof(input)?;
+    Ok((input, ()))
+}
+
 /// `add <pn> <name>`
 fn cmd_add(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add")(input)?;
-    let (input, _) = space1(input)?;
-    let (input, pn) = pn(input)?;
-    let (input, _) = space1(input)?;
-    let (input, name) = alphanumeric1(input)?;
-    let (input, _) = eof(input)?;
+    let (input, pn) = preceded(space1, pn)(input)?;
+    let (input, name) = preceded(space1, alphanumeric1)(input)?;
+    let _ = eol(input)?;
     let params = AddParams {
         pn: pn.to_string(),
         name: name.to_string(),
@@ -100,31 +109,27 @@ fn cmd_add(input: &str) -> IResult<&str, Command> {
 
 /// `list`
 fn cmd_list(input: &str) -> IResult<&str, Command> {
-    let (input, _) = tag("list")(input)?;
-    let (input, _) = eof(input)?;
+    let _ = tuple((tag("list"), eol))(input)?;
     Ok((input, Command::List))
 }
 
 /// `exit`
 fn cmd_exit(input: &str) -> IResult<&str, Command> {
-    let (input, _) = tag("exit")(input)?;
-    let (input, _) = eof(input)?;
+    let _ = tuple((tag("exit"), eol))(input)?;
     Ok((input, Command::Exit))
 }
 
 /// help
 fn cmd_help(input: &str) -> IResult<&str, Command> {
-    let (input, _) = tag("help")(input)?;
-    let (input, _) = eof(input)?;
+    let _ = tuple((tag("help"), eol))(input)?;
     Ok((input, Command::Help))
 }
 
 /// `tree <pn>`
 fn cmd_tree(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("tree")(input)?;
-    let (input, _) = space1(input)?;
-    let (input, pn) = pn(input)?;
-    let (input, _) = eof(input)?;
+    let (input, pn) = preceded(space1, pn)(input)?;
+    let _ = eol(input)?;
     let params = TreeParams { pn: pn.to_string() };
     Ok((input, Command::Tree(params)))
 }
@@ -132,9 +137,8 @@ fn cmd_tree(input: &str) -> IResult<&str, Command> {
 /// `where-used <pn>`
 fn cmd_where_used(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("where-used")(input)?;
-    let (input, _) = space1(input)?;
-    let (input, pn) = pn(input)?;
-    let (input, _) = eof(input)?;
+    let (input, pn) = preceded(space1, pn)(input)?;
+    let _ = eol(input)?;
     let params = WhereUsedParams { pn: pn.to_string() };
     Ok((input, Command::WhereUsed(params)))
 }
@@ -142,13 +146,10 @@ fn cmd_where_used(input: &str) -> IResult<&str, Command> {
 /// `add-child <parent-pn> <child-pn> <quantity>`
 fn cmd_add_child(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add-child")(input)?;
-    let (input, _) = space1(input)?;
-    let (input, parent_pn) = pn(input)?;
-    let (input, _) = space1(input)?;
-    let (input, child_pn) = pn(input)?;
-    let (input, _) = space1(input)?;
+    let (input, parent_pn) = preceded(space1, pn)(input)?;
+    let (input, child_pn) = preceded(space1, pn)(input)?;
     let (input, quantity) = quantity(input)?;
-    let (input, _) = eof(input)?;
+    let _ = eol(input)?;
     let params = AddChildParams {
         parent_pn: parent_pn.to_string(),
         child_pn: child_pn.to_string(),
