@@ -4,20 +4,115 @@ use std::{
 };
 
 use crate::{Error, Result};
-use rusqlite::Connection;
+use rusqlite::{
+    types::{ToSqlOutput, Value},
+    Connection, ToSql,
+};
 
 pub struct Database(Connection);
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
+pub enum ItemMaturity {
+    InProgress = 0,
+    Released = 1,
+}
+
+impl Display for ItemMaturity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let maturity = match self {
+            ItemMaturity::InProgress => "In progress...",
+            ItemMaturity::Released => "Released",
+        };
+        write!(f, "{maturity}")
+    }
+}
+
+impl TryFrom<usize> for ItemMaturity {
+    type Error = rusqlite::Error;
+
+    fn try_from(v: usize) -> Result<Self, Self::Error> {
+        match v {
+            x if x == ItemMaturity::InProgress as usize => Ok(ItemMaturity::InProgress),
+            x if x == ItemMaturity::Released as usize => Ok(ItemMaturity::Released),
+            _ => todo!("DB : Manage the maturity conversion"),
+        }
+    }
+}
+
+impl ToSql for ItemMaturity {
+    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::Owned(Value::Integer(*self as i64)))
+    }
+}
+
+struct InnerItem {
+    pn: String,
+    name: String,
+    maturity: ItemMaturity,
+    version: usize,
+}
+
+impl InnerItem {
+    fn new(pn: &str, name: &str) -> Self {
+        InnerItem {
+            pn: pn.to_string(),
+            name: name.to_string(),
+            version: 1,
+            maturity: ItemMaturity::InProgress,
+        }
+    }
+}
+
+impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for InnerItem {
+    type Error = rusqlite::Error;
+    fn try_from(value: &rusqlite::Row) -> std::result::Result<Self, Self::Error> {
+        let maturity: usize = value.get("maturity")?;
+        Ok(InnerItem {
+            pn: value.get("pn")?,
+            name: value.get("name")?,
+            version: value.get("version")?,
+            maturity: ItemMaturity::try_from(maturity)?,
+        })
+    }
+}
+
 pub struct Item {
     _id: usize,
-    pub pn: String,
-    pub name: String,
+    inner: InnerItem,
+}
+
+impl Item {
+    fn new(id: usize, inner: InnerItem) -> Self {
+        Item { _id: id, inner }
+    }
+
+    pub fn pn(&self) -> &str {
+        &self.inner.pn
+    }
+
+    pub fn name(&self) -> &str {
+        &self.inner.name
+    }
+
+    pub fn version(&self) -> usize {
+        self.inner.version
+    }
+
+    pub fn maturity(&self) -> ItemMaturity {
+        self.inner.maturity
+    }
 }
 
 impl Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{pn}] \"{name}\"", pn = self.pn, name = self.name)
+        write!(
+            f,
+            "[{pn}-{version:03}] \"{name}\" - {maturity}",
+            pn = self.pn(),
+            name = self.name(),
+            version = self.version(),
+            maturity = self.maturity()
+        )
     }
 }
 
@@ -40,8 +135,7 @@ impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
     fn try_from(value: &rusqlite::Row) -> std::result::Result<Self, Self::Error> {
         Ok(Item {
             _id: value.get("id")?,
-            pn: value.get("pn")?,
-            name: value.get("name")?,
+            inner: InnerItem::try_from(value)?,
         })
     }
 }
@@ -59,15 +153,17 @@ impl<T> ErrConvert<T> for rusqlite::Result<T> {
 const INIT_DB: [&str; 5] = [
     "PRAGMA foreign_keys = ON;",
     "CREATE TABLE IF NOT EXISTS items(
-        id   INTEGER PRIMARY KEY,
-        pn   TEXT,
-        name TEXT,
+        id        INTEGER PRIMARY KEY,
+        pn        TEXT,
+        name      TEXT,
+        maturity  INTEGER,
+        version   INTEGER,
         UNIQUE(pn)
     );",
     "CREATE TABLE IF NOT EXISTS children(
-        id_parent INTEGER,
-        id_child  INTEGER,
-        quantity  INTEGER,
+        id_parent  INTEGER,
+        id_child   INTEGER,
+        quantity   INTEGER,
         FOREIGN KEY(id_parent) REFERENCES items(id),
         FOREIGN KEY(id_child) REFERENCES items(id)
     );",
@@ -76,8 +172,10 @@ const INIT_DB: [&str; 5] = [
             items.id, 
             items.pn, 
             items.name, 
-            children.id_parent,
-            children.quantity 
+            items.version,
+            items.maturity,
+            children.quantity,
+            children.id_parent
         FROM items, children 
         WHERE children.id_child = items.id",
     "CREATE VIEW IF NOT EXISTS view_where_used AS
@@ -85,6 +183,8 @@ const INIT_DB: [&str; 5] = [
             children.id_parent as id,
             items.pn, 
             items.name,
+            items.version,
+            items.maturity,
             children.id_child
         FROM items, children 
         WHERE children.id_parent = items.id",
@@ -103,23 +203,28 @@ impl Database {
 
     // Add a new item to the store
     pub fn insert_item(&self, pn: &str, name: &str) -> Result<Item> {
+        let inner_item = InnerItem::new(pn, name);
         self.0
             .execute(
-                "INSERT INTO items(pn, name) VALUES(?1, ?2)",
-                [pn.to_string(), name.to_string()],
+                "INSERT INTO items(pn, name, version, maturity) VALUES(?1, ?2, ?3, ?4)",
+                (
+                    &inner_item.pn,
+                    &inner_item.name,
+                    inner_item.version,
+                    inner_item.maturity,
+                ),
             )
             .convert()?;
         let id = self.0.last_insert_rowid();
-        Ok(Item {
-            _id: id as usize,
-            pn: pn.to_string(),
-            name: name.to_string(),
-        })
+        Ok(Item::new(id as usize, inner_item))
     }
 
     /// Retrive all [Item]s
     pub fn get_items(&self) -> Result<Vec<Item>> {
-        let mut stmt = self.0.prepare("SELECT id, pn, name FROM items").convert()?;
+        let mut stmt = self
+            .0
+            .prepare("SELECT id, pn, name, version, maturity FROM items")
+            .convert()?;
         let items = stmt
             .query_map([], |row| Item::try_from(row))
             .convert()?
@@ -134,7 +239,7 @@ impl Database {
             .0
             .execute(
                 "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
-                (&item.pn, &item.name, item._id),
+                (&item.pn(), &item.name(), item._id),
             )
             .convert()?
             != 1
@@ -151,7 +256,7 @@ impl Database {
     pub fn get_item_by_pn(&self, pn: &str) -> Result<Item> {
         let mut stmt = self
             .0
-            .prepare("SELECT id, pn, name FROM items WHERE pn = ?1")
+            .prepare("SELECT id, pn, name, version, maturity FROM items WHERE pn = ?1")
             .convert()?;
         let mut rows = stmt.query([pn]).convert()?;
         let row1 = rows
@@ -181,7 +286,7 @@ impl Database {
     pub fn get_children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self
             .0
-            .prepare("SELECT id, pn, name, quantity FROM view_children WHERE id_parent = ?1")
+            .prepare("SELECT id, pn, name, version, maturity, quantity FROM view_children WHERE id_parent = ?1")
             .convert()?;
         let items = stmt
             .query_map([parent._id], |row| {
@@ -199,7 +304,9 @@ impl Database {
     pub fn where_used(&self, item: &Item) -> Result<Vec<Item>> {
         let mut stmt = self
             .0
-            .prepare("SELECT id, pn, name FROM view_where_used WHERE id_child = ?1")
+            .prepare(
+                "SELECT id, pn, name, version, maturity FROM view_where_used WHERE id_child = ?1",
+            )
             .convert()?;
         let items = stmt
             .query_map([item._id], |row| Item::try_from(row))

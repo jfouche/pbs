@@ -51,7 +51,7 @@ impl Store {
     pub fn get_stock(&self, pn: &str) -> Result<HashMap<Item, usize>> {
         let mut stock = HashMap::new();
         for (child, quantity) in self.get_children(pn)? {
-            stock.extend(self.get_stock(&child.pn)?);
+            stock.extend(self.get_stock(child.pn())?);
             *stock.entry(child).or_insert(0) += quantity;
         }
         Ok(stock)
