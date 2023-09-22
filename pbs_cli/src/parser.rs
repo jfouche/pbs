@@ -1,13 +1,11 @@
 use nom::{
     branch::alt,
-    bytes::{
-        complete::{take_till, take_while1},
-        streaming::tag,
-    },
+    bytes::complete::{tag, take_till, take_while1},
     character::complete::{char, digit1, multispace0, space0, space1},
     combinator::{eof, map_res},
+    error::ParseError,
     sequence::{delimited, pair, preceded, tuple},
-    IResult,
+    AsChar, Compare, IResult, InputLength, InputTake, InputTakeAtPosition, Parser,
 };
 
 #[derive(Debug)]
@@ -91,6 +89,14 @@ pub struct StockParams {
     pub pn: String,
 }
 
+impl From<&str> for StockParams {
+    fn from(value: &str) -> Self {
+        StockParams {
+            pn: value.to_string(),
+        }
+    }
+}
+
 /// Get the command of the input
 pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&str>>> {
     delimited(
@@ -110,11 +116,37 @@ pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&s
     .map(|(_, cmd)| cmd)
 }
 
+// ====================================================================
+
+/// parser for a cmd followed with params.
+fn cmd<I, O, E: ParseError<I>, F, T>(cmd: T, parser: F) -> impl FnMut(I) -> IResult<I, O, E>
+where
+    I: InputTake + Compare<T>,
+    T: InputLength + Clone,
+    F: Parser<I, O, E>,
+{
+    preceded(tag(cmd), parser)
+}
+
+/// parser for a whitespace separated param
+fn param<I, O, E: ParseError<I>, F>(mut parser: F) -> impl FnMut(I) -> IResult<I, O, E>
+where
+    I: InputTakeAtPosition,
+    <I as InputTakeAtPosition>::Item: AsChar + Clone,
+    F: Parser<I, O, E>,
+{
+    move |input: I| {
+        let (input, _) = space1(input)?;
+        parser.parse(input)
+    }
+}
+
 /// A PN is alphanum and can contain `.`, `-` or `_`
 fn pn(input: &str) -> IResult<&str, &str> {
     take_while1(|c: char| c.is_alphanumeric() || ".-_".find(c).is_some())(input)
 }
 
+#[allow(rustdoc::invalid_html_tags)]
 /// get the <name> param, allowing direct
 ///
 /// A name can start and end with `"`
@@ -125,21 +157,20 @@ fn name(input: &str) -> IResult<&str, &str> {
     ))(input)
 }
 
+/// Parser for a number
 fn quantity(input: &str) -> IResult<&str, usize> {
     map_res(digit1, |s: &str| s.parse::<usize>())(input)
 }
 
+/// End of line parser
 fn eol(input: &str) -> IResult<&str, ()> {
     pair(multispace0, eof)(input).map(|(i, (_, _))| (i, ()))
 }
 
 /// `add <pn> <name>`
 fn cmd_add(input: &str) -> IResult<&str, Command> {
-    preceded(
-        tag("add"),
-        pair(preceded(space1, pn), preceded(space1, name)),
-    )(input)
-    .map(|(i, output)| (i, Command::Add(AddParams::from(output))))
+    cmd("add", pair(preceded(space1, pn), preceded(space1, name)))(input)
+        .map(|(i, output)| (i, Command::Add(AddParams::from(output))))
 }
 
 /// `list`
@@ -159,33 +190,25 @@ fn cmd_help(input: &str) -> IResult<&str, Command> {
 
 /// `tree <pn>`
 fn cmd_tree(input: &str) -> IResult<&str, Command> {
-    preceded(tag("tree"), preceded(space1, pn))(input)
-        .map(|(i, pn)| (i, Command::Tree(TreeParams::from(pn))))
+    cmd("tree", param(pn))(input).map(|(i, pn)| (i, Command::Tree(TreeParams::from(pn))))
 }
 
 /// `where-used <pn>`
 fn cmd_where_used(input: &str) -> IResult<&str, Command> {
-    preceded(tag("where-used"), preceded(space1, pn))(input)
+    cmd("where-used", param(pn))(input)
         .map(|(i, pn)| (i, Command::WhereUsed(WhereUsedParams::from(pn))))
 }
 
 /// `add-child <parent-pn> <child-pn> <quantity>`
 fn cmd_add_child(input: &str) -> IResult<&str, Command> {
-    preceded(
-        tag("add-child"),
-        tuple((
-            preceded(space1, pn),
-            preceded(space1, pn),
-            preceded(space1, quantity),
-        )),
-    )(input)
-    .map(|(i, output)| (i, Command::AddChild(AddChildParams::from(output))))
+    cmd("add-child", tuple((param(pn), param(pn), param(quantity))))(input)
+        .map(|(i, output)| (i, Command::AddChild(AddChildParams::from(output))))
 }
 
 /// `stock <pn>`
 fn cmd_stock(input: &str) -> IResult<&str, Command> {
-    preceded(tag("stock"), preceded(space1, pn))(input)
-        .map(|(i, pn)| (i, Command::Stock(StockParams { pn: pn.to_string() })))
+    preceded(tag("stock"), param(pn))(input)
+        .map(|(i, pn)| (i, Command::Stock(StockParams::from(pn))))
 }
 
 /// =================================================================
