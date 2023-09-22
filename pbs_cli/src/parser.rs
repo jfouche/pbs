@@ -21,6 +21,39 @@ pub enum Command {
     Exit,
 }
 
+/// trait to retrieve a command from it's params
+trait ParamsCmd {
+    fn cmd(self) -> Command;
+}
+
+/// trait to convert a parser result which returns params to a
+/// `IResult<I, Command>`
+trait CommandWithParamsResult<I, O> {
+    fn cmd_n<P: ParamsCmd + From<O>>(self) -> IResult<I, Command>;
+}
+
+impl<I, O> CommandWithParamsResult<I, O> for IResult<I, O> {
+    fn cmd_n<P>(self) -> IResult<I, Command>
+    where
+        P: ParamsCmd + From<O>,
+    {
+        self.map(|(i, o)| (i, P::from(o).cmd()))
+    }
+}
+
+/// trait to convert a parser result which returns no param to a
+/// `IResult<I, Command>`
+trait CommandWithoutParamsResult<I, O> {
+    fn cmd_0(self, command: Command) -> IResult<I, Command>;
+}
+
+impl<I, O> CommandWithoutParamsResult<I, O> for IResult<I, O> {
+    fn cmd_0(self, command: Command) -> IResult<I, Command> {
+        self.map(|(i, _)| (i, command))
+    }
+}
+
+/// Params for the `add` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct AddParams {
@@ -37,6 +70,13 @@ impl From<(&str, &str)> for AddParams {
     }
 }
 
+impl ParamsCmd for AddParams {
+    fn cmd(self) -> Command {
+        Command::Add(self)
+    }
+}
+
+/// Params for the `add-child` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct AddChildParams {
@@ -55,6 +95,13 @@ impl From<(&str, &str, usize)> for AddChildParams {
     }
 }
 
+impl ParamsCmd for AddChildParams {
+    fn cmd(self) -> Command {
+        Command::AddChild(self)
+    }
+}
+
+/// Params for the `tree` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct TreeParams {
@@ -69,6 +116,13 @@ impl From<&str> for TreeParams {
     }
 }
 
+impl ParamsCmd for TreeParams {
+    fn cmd(self) -> Command {
+        Command::Tree(self)
+    }
+}
+
+/// Params for the `where-used` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct WhereUsedParams {
@@ -83,6 +137,13 @@ impl From<&str> for WhereUsedParams {
     }
 }
 
+impl ParamsCmd for WhereUsedParams {
+    fn cmd(self) -> Command {
+        Command::WhereUsed(self)
+    }
+}
+
+/// Params for the `stock` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct StockParams {
@@ -97,25 +158,14 @@ impl From<&str> for StockParams {
     }
 }
 
-/// Get the command of the input
-pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&str>>> {
-    delimited(
-        space0,
-        alt((
-            cmd_add,
-            cmd_list,
-            cmd_add_child,
-            cmd_tree,
-            cmd_help,
-            cmd_exit,
-            cmd_where_used,
-            cmd_stock,
-        )),
-        eol,
-    )(input)
-    .map(|(_, cmd)| cmd)
+impl ParamsCmd for StockParams {
+    fn cmd(self) -> Command {
+        Command::Stock(self)
+    }
 }
 
+// ====================================================================
+// parser helper functions
 // ====================================================================
 
 /// parser for a cmd followed with params.
@@ -167,48 +217,72 @@ fn eol(input: &str) -> IResult<&str, ()> {
     pair(multispace0, eof)(input).map(|(i, (_, _))| (i, ()))
 }
 
+// ====================================================================
+// command parsers
+// ====================================================================
+
 /// `add <pn> <name>`
 fn cmd_add(input: &str) -> IResult<&str, Command> {
-    cmd("add", pair(preceded(space1, pn), preceded(space1, name)))(input)
-        .map(|(i, output)| (i, Command::Add(AddParams::from(output))))
+    let params = pair(param(pn), param(name));
+    cmd("add", params)(input).cmd_n::<AddParams>()
 }
 
 /// `list`
 fn cmd_list(input: &str) -> IResult<&str, Command> {
-    tag("list")(input).map(|(i, _)| (i, Command::List))
+    tag("list")(input).cmd_0(Command::List)
 }
 
 /// `exit`
 fn cmd_exit(input: &str) -> IResult<&str, Command> {
-    tag("exit")(input).map(|(i, _)| (i, Command::Exit))
+    tag("exit")(input).cmd_0(Command::Exit)
 }
 
 /// `help`
 fn cmd_help(input: &str) -> IResult<&str, Command> {
-    tag("help")(input).map(|(i, _)| (i, Command::Help))
+    tag("help")(input).cmd_0(Command::Help)
 }
 
 /// `tree <pn>`
 fn cmd_tree(input: &str) -> IResult<&str, Command> {
-    cmd("tree", param(pn))(input).map(|(i, pn)| (i, Command::Tree(TreeParams::from(pn))))
+    let params = param(pn);
+    cmd("tree", params)(input).cmd_n::<TreeParams>()
 }
 
 /// `where-used <pn>`
 fn cmd_where_used(input: &str) -> IResult<&str, Command> {
-    cmd("where-used", param(pn))(input)
-        .map(|(i, pn)| (i, Command::WhereUsed(WhereUsedParams::from(pn))))
+    let params = param(pn);
+    cmd("where-used", params)(input).cmd_n::<WhereUsedParams>()
 }
 
 /// `add-child <parent-pn> <child-pn> <quantity>`
 fn cmd_add_child(input: &str) -> IResult<&str, Command> {
-    cmd("add-child", tuple((param(pn), param(pn), param(quantity))))(input)
-        .map(|(i, output)| (i, Command::AddChild(AddChildParams::from(output))))
+    let params = tuple((param(pn), param(pn), param(quantity)));
+    cmd("add-child", params)(input).cmd_n::<AddChildParams>()
 }
 
 /// `stock <pn>`
 fn cmd_stock(input: &str) -> IResult<&str, Command> {
-    preceded(tag("stock"), param(pn))(input)
-        .map(|(i, pn)| (i, Command::Stock(StockParams::from(pn))))
+    let params = param(pn);
+    preceded(tag("stock"), params)(input).cmd_n::<StockParams>()
+}
+
+/// Get the command of the input
+pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&str>>> {
+    delimited(
+        space0,
+        alt((
+            cmd_add,
+            cmd_list,
+            cmd_add_child,
+            cmd_tree,
+            cmd_help,
+            cmd_exit,
+            cmd_where_used,
+            cmd_stock,
+        )),
+        eol,
+    )(input)
+    .map(|(_, cmd)| cmd)
 }
 
 /// =================================================================
