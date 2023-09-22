@@ -111,7 +111,7 @@ fn cmd_exit(input: &str) -> IResult<&str, Command> {
     Ok((input, Command::Exit))
 }
 
-/// help
+/// `help`
 fn cmd_help(input: &str) -> IResult<&str, Command> {
     let _ = tuple((tag("help"), eol))(input)?;
     Ok((input, Command::Help))
@@ -140,7 +140,7 @@ fn cmd_add_child(input: &str) -> IResult<&str, Command> {
     let (input, _) = tag("add-child")(input)?;
     let (input, parent_pn) = preceded(space1, pn)(input)?;
     let (input, child_pn) = preceded(space1, pn)(input)?;
-    let (input, quantity) = quantity(input)?;
+    let (input, quantity) = preceded(space1, quantity)(input)?;
     let _ = eol(input)?;
     let params = AddChildParams {
         parent_pn: parent_pn.to_string(),
@@ -166,39 +166,60 @@ fn cmd_stock(input: &str) -> IResult<&str, Command> {
 mod tests {
     use super::*;
 
-    fn assert_is(cmd: Command, input: &str) {
-        let res = get_command(input);
-        assert!(res.is_ok());
-        assert_eq!(cmd, res.unwrap());
+    #[test]
+    fn test_list_ok() {
+        assert_eq!(Command::List, get_command("list").unwrap());
+        assert_eq!(Command::List, get_command("  list").unwrap());
+        assert_eq!(Command::List, get_command("  \tlist \t ").unwrap());
     }
 
     #[test]
     fn test_exit_ok() {
-        assert_is(Command::Exit, "exit");
-        assert_is(Command::Exit, "  exit");
-        assert_is(Command::Exit, "  exit  ");
+        assert_eq!(Command::Exit, get_command("exit").unwrap());
+        assert_eq!(Command::Exit, get_command("  exit").unwrap());
+        assert_eq!(Command::Exit, get_command("  exit  ").unwrap());
     }
 
     #[test]
     fn test_exit_err() {
-        let res = get_command("exi");
-        assert!(res.is_err());
-        let res = get_command("exitt");
-        assert!(res.is_err());
+        assert!(get_command("exi").is_err());
+        assert!(get_command("exit4").is_err());
+        assert!(get_command("exit 4").is_err());
     }
 
     #[test]
     fn test_add_ok() {
-        let res = get_command("\t add \t PN \t   NAME  ");
-        assert!(res.is_ok(), "{res:?}");
-        if let Ok(cmd) = res {
-            match cmd {
-                Command::Add(params) => {
-                    assert_eq!("PN".to_string(), params.pn);
-                    assert_eq!("NAME".to_string(), params.name);
-                }
-                _ => panic!("Bad command : {cmd:?}"),
-            }
-        }
+        let cmd = get_command("\t add \t PN \t   NAME  ").unwrap();
+        assert_eq!(
+            Command::Add(AddParams {
+                pn: "PN".to_string(),
+                name: "NAME".to_string()
+            }),
+            cmd
+        );
+    }
+
+    #[test]
+    fn test_tree_ok() {
+        let cmd = get_command("\t tree \t PN \t  ").unwrap();
+        assert_eq!(
+            Command::Tree(TreeParams {
+                pn: "PN".to_string(),
+            }),
+            cmd
+        );
+    }
+
+    #[test]
+    fn test_add_child() {
+        let cmd = get_command("\t add-child \t PN1 \t   PN2\t  456 \t ").unwrap();
+        assert_eq!(
+            Command::AddChild(AddChildParams {
+                parent_pn: "PN1".to_string(),
+                child_pn: "PN2".to_string(),
+                quantity: 456
+            }),
+            cmd
+        );
     }
 }

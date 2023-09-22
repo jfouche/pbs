@@ -51,7 +51,8 @@ const INIT_DB: [&str; 5] = [
     "CREATE TABLE IF NOT EXISTS items(
         id   INTEGER PRIMARY KEY,
         pn   TEXT,
-        name TEXT
+        name TEXT,
+        UNIQUE(pn)
     );",
     "CREATE TABLE IF NOT EXISTS children(
         id_parent INTEGER,
@@ -106,6 +107,7 @@ impl Database {
         })
     }
 
+    /// Retrive all [Item]s
     pub fn get_items(&self) -> Result<Vec<Item>> {
         let mut stmt = self.0.prepare("SELECT id, pn, name FROM items").convert()?;
         let items = stmt
@@ -227,5 +229,12 @@ mod test {
         db.add_child(&item1, &item3, 2).unwrap();
         let children = db.get_children(&item1).unwrap();
         assert_eq!(2, children.len());
+    }
+
+    #[test]
+    fn add_same_pn() {
+        let db = Database::open(":memory:").unwrap();
+        let _ = db.insert_item("PN", "ITEM").unwrap();
+        assert!(db.insert_item("PN", "ANOTHER").is_err());
     }
 }
