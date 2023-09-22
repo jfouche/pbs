@@ -1,5 +1,6 @@
 /target/
 *.db3
+*.db3-journal
 
 # Logs
 # logs
