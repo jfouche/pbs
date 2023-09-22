@@ -51,27 +51,9 @@ impl Store {
     pub fn get_stock(&self, pn: &str) -> Result<HashMap<Item, usize>> {
         let mut stock = HashMap::new();
         for (child, quantity) in self.get_children(pn)? {
-            if let Some(actual_quantity) = stock.get(&child) {
-                *actual_quantity += quantity;
-            } else {
-                stock.insert(&child, quantity);
-            }
-            for x in self.get_stock(&child.pn) {}
+            stock.extend(self.get_stock(&child.pn)?);
+            *stock.entry(child).or_insert(0) += quantity;
         }
         Ok(stock)
-    }
-}
-
-trait UpdateQuantity {
-    fn update_quantity(&mut self, item: &Item, quantity: usize);
-}
-
-impl UpdateQuantity for HashMap<Item, usize> {
-    fn update_quantity(&mut self, item: &Item, quantity: usize) {
-        if let Some(actual_quantity) = self.get(item) {
-            *actual_quantity += quantity;
-        } else {
-            self.insert(item, quantity);
-        }
     }
 }

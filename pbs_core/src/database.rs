@@ -1,14 +1,24 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 
 use crate::{Error, Result};
 use rusqlite::Connection;
 
 pub struct Database(Connection);
 
+#[derive(Clone)]
 pub struct Item {
     _id: usize,
     pub pn: String,
     pub name: String,
+}
+
+impl Display for Item {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{pn}] \"{name}\"", pn = self.pn, name = self.name)
+    }
 }
 
 impl PartialEq for Item {

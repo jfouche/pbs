@@ -51,7 +51,7 @@ impl PbsCli {
 
     fn handle_add(&mut self, params: AddParams) {
         match self.store.new_item(&params.pn, &params.name) {
-            Ok(item) => println!("  added item {}", item.name),
+            Ok(item) => println!("  added {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
@@ -59,15 +59,8 @@ impl PbsCli {
     fn handle_list(&self) {
         match self.store.get_items() {
             Ok(items) => {
-                // Get the max size of PN
-                let max_pn_len = items.iter().map(|i| i.pn.len()).max().unwrap_or(0);
                 for item in items {
-                    println!(
-                        "  - item {pn:>w$}\t{name}",
-                        pn = item.pn,
-                        name = item.name,
-                        w = max_pn_len
-                    );
+                    println!("  - {item}");
                 }
             }
             Err(e) => eprintln!("ERROR : {:?}", e),
@@ -87,11 +80,7 @@ impl PbsCli {
         match self.store.get_children(&params.pn) {
             Ok(children) => {
                 for (item, quantity) in children {
-                    println!(
-                        "  - item {pn}\t{name}\t{quantity}",
-                        pn = item.pn,
-                        name = item.name
-                    );
+                    println!("  - {item} : {quantity}");
                 }
             }
             Err(e) => eprintln!("ERROR : {:?}", e),
@@ -101,7 +90,7 @@ impl PbsCli {
         match self.store.where_used(&params.pn) {
             Ok(parents) => {
                 for item in parents {
-                    println!("  - item {pn}\t{name}", pn = item.pn, name = item.name);
+                    println!("  - {item}");
                 }
             }
             Err(e) => eprintln!("ERROR : {:?}", e),
@@ -110,9 +99,9 @@ impl PbsCli {
 
     fn handle_stock(&self, params: StockParams) {
         match self.store.get_stock(&params.pn) {
-            Ok(parents) => {
-                for item in parents {
-                    println!("  - item {pn}\t{name}", pn = item.pn, name = item.name);
+            Ok(items) => {
+                for (item, quantity) in items {
+                    println!("  - {item} : {quantity}");
                 }
             }
             Err(e) => eprintln!("ERROR : {:?}", e),
