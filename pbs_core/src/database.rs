@@ -221,10 +221,7 @@ impl Database {
 
     /// Retrive all [Item]s
     pub fn get_items(&self) -> Result<Vec<Item>> {
-        let mut stmt = self
-            .0
-            .prepare("SELECT id, pn, name, version, maturity FROM items")
-            .convert()?;
+        let mut stmt = self.0.prepare("SELECT * FROM items").convert()?;
         let items = stmt
             .query_map([], |row| Item::try_from(row))
             .convert()?
@@ -256,7 +253,7 @@ impl Database {
     pub fn get_item_by_pn(&self, pn: &str) -> Result<Item> {
         let mut stmt = self
             .0
-            .prepare("SELECT id, pn, name, version, maturity FROM items WHERE pn = ?1")
+            .prepare("SELECT * FROM items WHERE pn = ?1")
             .convert()?;
         let mut rows = stmt.query([pn]).convert()?;
         let row1 = rows
@@ -286,7 +283,7 @@ impl Database {
     pub fn get_children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self
             .0
-            .prepare("SELECT id, pn, name, version, maturity, quantity FROM view_children WHERE id_parent = ?1")
+            .prepare("SELECT * FROM view_children WHERE id_parent = ?1")
             .convert()?;
         let items = stmt
             .query_map([parent._id], |row| {
@@ -304,9 +301,7 @@ impl Database {
     pub fn where_used(&self, item: &Item) -> Result<Vec<Item>> {
         let mut stmt = self
             .0
-            .prepare(
-                "SELECT id, pn, name, version, maturity FROM view_where_used WHERE id_child = ?1",
-            )
+            .prepare("SELECT * FROM view_where_used WHERE id_child = ?1")
             .convert()?;
         let items = stmt
             .query_map([item._id], |row| Item::try_from(row))
