@@ -147,8 +147,12 @@ impl<T> ErrConvert<T> for rusqlite::Result<T> {
     }
 }
 
-const INIT_DB: [&str; 5] = [
+const INIT_DB: [&str; 6] = [
     "PRAGMA foreign_keys = ON;",
+    "CREATE TABLE IF NOT EXISTS config(
+        key       TEXT PRIMARY KEY,
+        value     TEXT
+    );",
     "CREATE TABLE IF NOT EXISTS items(
         id        INTEGER PRIMARY KEY,
         pn        TEXT,
@@ -198,6 +202,22 @@ impl Database {
         }
 
         Ok(Database(conn))
+    }
+
+    pub fn get_config(&self, key: String) -> Result<String> {
+        let mut stmt = self
+            .0
+            .prepare("SELECT value FROM config WHERE key = ?1")
+            .convert()?;
+        stmt.query_row([key], |row| row.get("value")).convert()
+    }
+
+    pub fn set_config(&self, key: String, value: String) -> Result<()> {
+        let mut stmt = self
+            .0
+            .prepare("REPLACE into config(key, value) VALUES(?1, ?2)")
+            .convert()?;
+        stmt.execute([key, value]).map(|_| ()).convert()
     }
 
     // Add a new item to the store
@@ -342,5 +362,23 @@ mod test {
         let db = Database::open(":memory:").unwrap();
         let _ = db.insert_item("PN", "ITEM").unwrap();
         assert!(db.insert_item("PN", "ANOTHER").is_err());
+    }
+
+    #[test]
+    fn config() {
+        let db = Database::open(":memory:").unwrap();
+        assert!(db.get_config("key".to_string()).is_err());
+        assert!(db
+            .set_config("key".to_string(), "value".to_string())
+            .is_ok());
+        assert_eq!(
+            "value".to_string(),
+            db.get_config("key".to_string()).unwrap()
+        );
+        let _ = db.set_config("key".to_string(), "value 2".to_string());
+        assert_eq!(
+            "value 2".to_string(),
+            db.get_config("key".to_string()).unwrap()
+        );
     }
 }
