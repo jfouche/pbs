@@ -5,7 +5,7 @@ use std::{
 
 use crate::{Error, Result};
 use rusqlite::{
-    types::{ToSqlOutput, Value},
+    types::{FromSql, FromSqlResult, ToSqlOutput, Value, ValueRef},
     Connection, ToSql,
 };
 
@@ -27,20 +27,18 @@ impl Display for ItemMaturity {
     }
 }
 
-impl TryFrom<usize> for ItemMaturity {
-    type Error = rusqlite::Error;
-
-    fn try_from(v: usize) -> Result<Self, Self::Error> {
-        match v {
-            x if x == ItemMaturity::InProgress as usize => Ok(ItemMaturity::InProgress),
-            x if x == ItemMaturity::Released as usize => Ok(ItemMaturity::Released),
+impl FromSql for ItemMaturity {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value.as_i64()? {
+            x if x == ItemMaturity::InProgress as i64 => Ok(ItemMaturity::InProgress),
+            x if x == ItemMaturity::Released as i64 => Ok(ItemMaturity::Released),
             _ => todo!("DB : Manage the maturity conversion"),
         }
     }
 }
 
 impl ToSql for ItemMaturity {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         Ok(ToSqlOutput::Owned(Value::Integer(*self as i64)))
     }
 }
@@ -66,12 +64,11 @@ impl InnerItem {
 impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for InnerItem {
     type Error = rusqlite::Error;
     fn try_from(value: &rusqlite::Row) -> std::result::Result<Self, Self::Error> {
-        let maturity: usize = value.get("maturity")?;
         Ok(InnerItem {
             pn: value.get("pn")?,
             name: value.get("name")?,
             version: value.get("version")?,
-            maturity: ItemMaturity::try_from(maturity)?,
+            maturity: value.get("maturity")?,
         })
     }
 }
@@ -194,6 +191,8 @@ impl Database {
     /// Open the store
     pub fn open(url: &str) -> Result<Self> {
         let conn = Connection::open(url).convert()?;
+        //TODO
+        //let init_reqs = include_str!("db.sql");
         for req in INIT_DB {
             conn.execute(req, ()).convert()?;
         }
@@ -255,12 +254,7 @@ impl Database {
             .0
             .prepare("SELECT * FROM items WHERE pn = ?1")
             .convert()?;
-        let mut rows = stmt.query([pn]).convert()?;
-        let row1 = rows
-            .next()
-            .convert()?
-            .ok_or(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows))?;
-        Item::try_from(row1).convert()
+        stmt.query_row([pn], |row| Item::try_from(row)).convert()
     }
 
     /// Add a child to an item

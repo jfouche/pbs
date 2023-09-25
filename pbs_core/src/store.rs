@@ -35,19 +35,19 @@ impl Store {
         self.db.add_child(&parent_item, &child_item, quantity)
     }
 
-    // Get all items children
+    /// Get all items children
     pub fn get_children(&self, pn: &str) -> Result<Vec<(Item, usize)>> {
         let item = self.db.get_item_by_pn(pn)?;
         self.db.get_children(&item)
     }
 
-    // Get all parent items using the given item
+    /// Get all parent items using the given item
     pub fn where_used(&self, pn: &str) -> Result<Vec<Item>> {
         let item = self.db.get_item_by_pn(pn)?;
         self.db.where_used(&item)
     }
 
-    //
+    /// Get all items and quantity that compose the given item
     pub fn get_stock(&self, pn: &str) -> Result<HashMap<Item, usize>> {
         let mut stock = HashMap::new();
         for (child, quantity) in self.get_children(pn)? {
