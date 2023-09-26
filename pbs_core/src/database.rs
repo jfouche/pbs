@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    hash::{Hash, Hasher},
-};
+use std::hash::{Hash, Hasher};
 
 use crate::{Error, Result};
 use rusqlite::{
@@ -17,7 +14,7 @@ pub enum ItemMaturity {
     Released = 1,
 }
 
-impl Display for ItemMaturity {
+impl std::fmt::Display for ItemMaturity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let maturity = match self {
             ItemMaturity::InProgress => "In progress...",
@@ -100,7 +97,7 @@ impl Item {
     }
 }
 
-impl Display for Item {
+impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -147,60 +144,13 @@ impl<T> ErrConvert<T> for rusqlite::Result<T> {
     }
 }
 
-const INIT_DB: [&str; 6] = [
-    "PRAGMA foreign_keys = ON;",
-    "CREATE TABLE IF NOT EXISTS config(
-        key       TEXT PRIMARY KEY,
-        value     TEXT
-    );",
-    "CREATE TABLE IF NOT EXISTS items(
-        id        INTEGER PRIMARY KEY,
-        pn        TEXT,
-        name      TEXT,
-        maturity  INTEGER,
-        version   INTEGER,
-        UNIQUE(pn)
-    );",
-    "CREATE TABLE IF NOT EXISTS children(
-        id_parent  INTEGER,
-        id_child   INTEGER,
-        quantity   INTEGER,
-        FOREIGN KEY(id_parent) REFERENCES items(id),
-        FOREIGN KEY(id_child) REFERENCES items(id)
-    );",
-    "CREATE VIEW IF NOT EXISTS view_children AS
-        SELECT
-            items.id, 
-            items.pn, 
-            items.name, 
-            items.version,
-            items.maturity,
-            children.quantity,
-            children.id_parent
-        FROM items, children 
-        WHERE children.id_child = items.id",
-    "CREATE VIEW IF NOT EXISTS view_where_used AS
-    SELECT
-            children.id_parent as id,
-            items.pn, 
-            items.name,
-            items.version,
-            items.maturity,
-            children.id_child
-        FROM items, children 
-        WHERE children.id_parent = items.id",
-];
-
 impl Database {
     /// Open the store
     pub(crate) fn open(url: &str) -> Result<Self> {
         let conn = Connection::open(url).convert()?;
-        //TODO
-        //let init_reqs = include_str!("db.sql");
-        for req in INIT_DB {
+        for req in include_str!("db.sql").split(';').filter(|s| !s.is_empty()) {
             conn.execute(req, ()).convert()?;
         }
-
         Ok(Database(conn))
     }
 
@@ -362,6 +312,9 @@ mod test {
         db.add_child(&item1, &item3, 2).unwrap();
         let children = db.get_children(&item1).unwrap();
         assert_eq!(2, children.len());
+
+        // can't add an already existing child
+        assert!(db.add_child(&item1, &item3, 2).is_err());
     }
 
     #[test]

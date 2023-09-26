@@ -31,7 +31,7 @@ impl Store {
         self.db.set_config(key, value)
     }
 
-    /// Create a new item, using the [PnProvider]
+    /// Create a new item, allocating a new PN
     pub fn create(&mut self, name: &str) -> Result<Item> {
         let pn = simple_8digits_pn_provider(&mut self.db)?;
         self.db.insert_item(&pn, name)
