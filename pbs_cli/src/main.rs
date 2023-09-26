@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use parser::{AddChildParams, AddParams, StockParams, TreeParams, WhereUsedParams};
+use parser::{AddChildParams, AddParams, CreateParams, StockParams, TreeParams, WhereUsedParams};
 use pbs_core::{Result, Store};
 
 use crate::parser::{get_command, Command};
@@ -39,6 +39,7 @@ impl PbsCli {
 
     fn handle_cmd(&mut self, cmd: Command) {
         match cmd {
+            Command::Create(params) => self.handle_create(params),
             Command::Add(params) => self.handle_add(params),
             Command::List => self.handle_list(),
             Command::AddChild(params) => self.handle_add_child(params),
@@ -46,6 +47,13 @@ impl PbsCli {
             Command::WhereUsed(params) => self.handle_where_used(params),
             Command::Stock(params) => self.handle_stock(params),
             Command::Exit | Command::Help => {}
+        }
+    }
+
+    fn handle_create(&mut self, params: CreateParams) {
+        match self.store.create(&params.name) {
+            Ok(item) => println!("  created {item}"),
+            Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
 

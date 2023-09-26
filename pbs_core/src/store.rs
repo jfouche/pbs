@@ -1,6 +1,14 @@
 use std::collections::HashMap;
 
-use crate::{Database, Item, Result};
+use crate::{database::Database, Item, Result};
+
+pub fn simple_8digits_pn_provider(db: &mut Database) -> Result<String> {
+    const KEY: &str = "simple_pn_provider";
+    let last_pn = db.get_config(KEY)?.parse::<usize>().unwrap_or(0);
+    let new_pn = format!("{:08}", last_pn + 1);
+    db.set_config(KEY, &new_pn)?;
+    Ok(new_pn)
+}
 
 pub struct Store {
     db: Database,
@@ -13,8 +21,24 @@ impl Store {
         Ok(Store { db })
     }
 
+    /// Get a config value from the database
+    pub fn get_config(&self, key: &str) -> Result<String> {
+        self.db.get_config(key)
+    }
+
+    /// Set a config value in the database
+    pub fn set_config(&mut self, key: &str, value: &str) -> Result<()> {
+        self.db.set_config(key, value)
+    }
+
+    /// Create a new item, allocating a new PN
+    pub fn create(&mut self, name: &str) -> Result<Item> {
+        let pn = simple_8digits_pn_provider(&mut self.db)?;
+        self.db.insert_item(&pn, name)
+    }
+
     // Add a new item to the store
-    pub fn new_item(&self, pn: &str, name: &str) -> Result<Item> {
+    pub fn new_item(&mut self, pn: &str, name: &str) -> Result<Item> {
         self.db.insert_item(pn, name)
     }
 

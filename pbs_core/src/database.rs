@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    hash::{Hash, Hasher},
-};
+use std::hash::{Hash, Hasher};
 
 use crate::{Error, Result};
 use rusqlite::{
@@ -17,7 +14,7 @@ pub enum ItemMaturity {
     Released = 1,
 }
 
-impl Display for ItemMaturity {
+impl std::fmt::Display for ItemMaturity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let maturity = match self {
             ItemMaturity::InProgress => "In progress...",
@@ -100,7 +97,7 @@ impl Item {
     }
 }
 
-impl Display for Item {
+impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -147,81 +144,41 @@ impl<T> ErrConvert<T> for rusqlite::Result<T> {
     }
 }
 
-const INIT_DB: [&str; 6] = [
-    "PRAGMA foreign_keys = ON;",
-    "CREATE TABLE IF NOT EXISTS config(
-        key       TEXT PRIMARY KEY,
-        value     TEXT
-    );",
-    "CREATE TABLE IF NOT EXISTS items(
-        id        INTEGER PRIMARY KEY,
-        pn        TEXT,
-        name      TEXT,
-        maturity  INTEGER,
-        version   INTEGER,
-        UNIQUE(pn)
-    );",
-    "CREATE TABLE IF NOT EXISTS children(
-        id_parent  INTEGER,
-        id_child   INTEGER,
-        quantity   INTEGER,
-        FOREIGN KEY(id_parent) REFERENCES items(id),
-        FOREIGN KEY(id_child) REFERENCES items(id)
-    );",
-    "CREATE VIEW IF NOT EXISTS view_children AS
-        SELECT
-            items.id, 
-            items.pn, 
-            items.name, 
-            items.version,
-            items.maturity,
-            children.quantity,
-            children.id_parent
-        FROM items, children 
-        WHERE children.id_child = items.id",
-    "CREATE VIEW IF NOT EXISTS view_where_used AS
-    SELECT
-            children.id_parent as id,
-            items.pn, 
-            items.name,
-            items.version,
-            items.maturity,
-            children.id_child
-        FROM items, children 
-        WHERE children.id_parent = items.id",
-];
-
 impl Database {
     /// Open the store
-    pub fn open(url: &str) -> Result<Self> {
+    pub(crate) fn open(url: &str) -> Result<Self> {
         let conn = Connection::open(url).convert()?;
-        //TODO
-        //let init_reqs = include_str!("db.sql");
-        for req in INIT_DB {
+        for req in include_str!("db.sql").split(';').filter(|s| !s.is_empty()) {
             conn.execute(req, ()).convert()?;
         }
-
         Ok(Database(conn))
     }
 
-    pub fn get_config(&self, key: String) -> Result<String> {
+    // Get a config value from database
+    pub fn get_config(&self, key: &str) -> Result<String> {
         let mut stmt = self
             .0
             .prepare("SELECT value FROM config WHERE key = ?1")
             .convert()?;
-        stmt.query_row([key], |row| row.get("value")).convert()
+        match stmt.query_row([key], |row| row.get("value")) {
+            Ok(value) => Ok(value),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok("".to_string()),
+            Err(e) => Err(e),
+        }
+        .convert()
     }
 
-    pub fn set_config(&self, key: String, value: String) -> Result<()> {
+    // Set a config value in database
+    pub fn set_config(&self, key: &str, value: &str) -> Result<()> {
         let mut stmt = self
             .0
             .prepare("REPLACE into config(key, value) VALUES(?1, ?2)")
             .convert()?;
-        stmt.execute([key, value]).map(|_| ()).convert()
+        stmt.execute((key, value)).map(|_| ()).convert()
     }
 
     // Add a new item to the store
-    pub fn insert_item(&self, pn: &str, name: &str) -> Result<Item> {
+    pub(crate) fn insert_item(&self, pn: &str, name: &str) -> Result<Item> {
         let inner_item = InnerItem::new(pn, name);
         self.0
             .execute(
@@ -239,7 +196,7 @@ impl Database {
     }
 
     /// Retrive all [Item]s
-    pub fn get_items(&self) -> Result<Vec<Item>> {
+    pub(crate) fn get_items(&self) -> Result<Vec<Item>> {
         let mut stmt = self.0.prepare("SELECT * FROM items").convert()?;
         let items = stmt
             .query_map([], |row| Item::try_from(row))
@@ -250,7 +207,7 @@ impl Database {
     }
 
     /// Update the item
-    pub fn update_item(&mut self, item: Item) -> Result<()> {
+    pub(crate) fn update_item(&mut self, item: Item) -> Result<()> {
         if self
             .0
             .execute(
@@ -278,7 +235,7 @@ impl Database {
     }
 
     /// Add a child to an item
-    pub fn add_child(&mut self, parent: &Item, child: &Item, quantity: usize) -> Result<()> {
+    pub(crate) fn add_child(&mut self, parent: &Item, child: &Item, quantity: usize) -> Result<()> {
         if self
             .0
             .execute(
@@ -294,7 +251,7 @@ impl Database {
     }
 
     /// Get children of an item
-    pub fn get_children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
+    pub(crate) fn get_children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self
             .0
             .prepare("SELECT * FROM view_children WHERE id_parent = ?1")
@@ -312,7 +269,7 @@ impl Database {
     }
 
     ///
-    pub fn where_used(&self, item: &Item) -> Result<Vec<Item>> {
+    pub(crate) fn where_used(&self, item: &Item) -> Result<Vec<Item>> {
         let mut stmt = self
             .0
             .prepare("SELECT * FROM view_where_used WHERE id_child = ?1")
@@ -355,6 +312,9 @@ mod test {
         db.add_child(&item1, &item3, 2).unwrap();
         let children = db.get_children(&item1).unwrap();
         assert_eq!(2, children.len());
+
+        // can't add an already existing child
+        assert!(db.add_child(&item1, &item3, 2).is_err());
     }
 
     #[test]
@@ -367,18 +327,10 @@ mod test {
     #[test]
     fn config() {
         let db = Database::open(":memory:").unwrap();
-        assert!(db.get_config("key".to_string()).is_err());
-        assert!(db
-            .set_config("key".to_string(), "value".to_string())
-            .is_ok());
-        assert_eq!(
-            "value".to_string(),
-            db.get_config("key".to_string()).unwrap()
-        );
-        let _ = db.set_config("key".to_string(), "value 2".to_string());
-        assert_eq!(
-            "value 2".to_string(),
-            db.get_config("key".to_string()).unwrap()
-        );
+        assert_eq!("".to_string(), db.get_config("key").unwrap());
+        assert!(db.set_config("key", "value").is_ok());
+        assert_eq!("value".to_string(), db.get_config("key").unwrap());
+        let _ = db.set_config("key", "value 2");
+        assert_eq!("value 2", db.get_config("key").unwrap());
     }
 }

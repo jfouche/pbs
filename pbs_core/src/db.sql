@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS children(
     id_child   INTEGER,
     quantity   INTEGER,
     FOREIGN KEY(id_parent) REFERENCES items(id),
-    FOREIGN KEY(id_child) REFERENCES items(id)
+    FOREIGN KEY(id_child) REFERENCES items(id),
+    UNIQUE(id_parent, id_child)
 );
     
 CREATE VIEW IF NOT EXISTS view_children AS
@@ -39,3 +40,8 @@ CREATE VIEW IF NOT EXISTS view_where_used AS
         children.id_child
     FROM items, children 
     WHERE children.id_parent = items.id;
+
+CREATE TABLE IF NOT EXISTS config(
+    key       TEXT PRIMARY KEY,
+    value     TEXT
+);
