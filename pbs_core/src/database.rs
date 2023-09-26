@@ -281,6 +281,20 @@ impl Database {
             .collect::<Vec<_>>();
         Ok(items)
     }
+
+    /// Search for items match pn or name columns
+    pub fn search(&self, pattern: &str) -> Result<Vec<Item>> {
+        let mut stmt = self
+            .0
+            .prepare("SELECT * FROM items WHERE pn LIKE ?1 or name LIKE ?1 ORDER BY pn")
+            .convert()?;
+        let items = stmt
+            .query_map([pattern], |row| Item::try_from(row))
+            .convert()?
+            .filter_map(|i| i.ok())
+            .collect::<Vec<_>>();
+        Ok(items)
+    }
 }
 
 #[cfg(test)]
@@ -332,5 +346,28 @@ mod test {
         assert_eq!("value".to_string(), db.get_config("key").unwrap());
         let _ = db.set_config("key", "value 2");
         assert_eq!("value 2", db.get_config("key").unwrap());
+    }
+
+    #[test]
+    fn search() {
+        let db = Database::open(":memory:").unwrap();
+        db.insert_item("00000001", "FIRST ITEM").unwrap();
+        db.insert_item("00000002", "SECOND ITEM").unwrap();
+        db.insert_item("00000003", "THIRD THING").unwrap();
+        db.insert_item("123.456", "EXTERNAL THING").unwrap();
+        db.insert_item("123.003", "OTHER EXTERNAL THING").unwrap();
+        db.insert_item("123.678", "THING 1003").unwrap();
+
+        let items = db.search("%000%").unwrap();
+        assert_eq!(3, items.len());
+        assert_eq!("00000001", items.get(0).unwrap().pn());
+        assert_eq!("00000002", items.get(1).unwrap().pn());
+        assert_eq!("00000003", items.get(2).unwrap().pn());
+
+        let items = db.search("%003%").unwrap();
+        assert_eq!(3, items.len());
+        assert_eq!("00000003", items.get(0).unwrap().pn());
+        assert_eq!("123.003", items.get(1).unwrap().pn());
+        assert_eq!("123.678", items.get(2).unwrap().pn());
     }
 }

@@ -80,4 +80,9 @@ impl Store {
         }
         Ok(stock)
     }
+
+    /// Search for items matching pattern (pn or name)
+    pub fn search_items(&self, pattern: &str) -> Result<Vec<Item>> {
+        self.db.search(pattern)
+    }
 }
