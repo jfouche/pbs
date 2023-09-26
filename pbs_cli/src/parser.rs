@@ -11,6 +11,7 @@ use nom::{
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Command {
+    Create(CreateParams),
     Add(AddParams),
     AddChild(AddChildParams),
     List,
@@ -53,6 +54,26 @@ impl<I, O> CommandWithoutParamsResult<I, O> for IResult<I, O> {
     }
 }
 
+/// Params for the `create` command
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct CreateParams {
+    pub name: String,
+}
+
+impl From<&str> for CreateParams {
+    fn from(value: &str) -> Self {
+        CreateParams {
+            name: value.to_string(),
+        }
+    }
+}
+
+impl ParamsCmd for CreateParams {
+    fn cmd(self) -> Command {
+        Command::Create(self)
+    }
+}
 /// Params for the `add` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -221,6 +242,12 @@ fn eol(input: &str) -> IResult<&str, ()> {
 // command parsers
 // ====================================================================
 
+/// `create <name>`
+fn cmd_create(input: &str) -> IResult<&str, Command> {
+    let params = param(pn);
+    cmd("create", params)(input).cmd_n::<CreateParams>()
+}
+
 /// `add <pn> <name>`
 fn cmd_add(input: &str) -> IResult<&str, Command> {
     let params = pair(param(pn), param(name));
@@ -271,6 +298,7 @@ pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&s
     delimited(
         space0,
         alt((
+            cmd_create,
             cmd_add,
             cmd_list,
             cmd_add_child,
@@ -365,6 +393,17 @@ mod tests {
                 parent_pn: "PN1".to_string(),
                 child_pn: "PN2".to_string(),
                 quantity: 456
+            }),
+            cmd
+        );
+    }
+
+    #[test]
+    fn test_create() {
+        let cmd = get_command("\t create \t   \t NAME ").unwrap();
+        assert_eq!(
+            Command::Create(CreateParams {
+                name: "NAME".to_string(),
             }),
             cmd
         );
