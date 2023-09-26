@@ -2,6 +2,18 @@
 
 Allow you to manage a product breakdown
 
+# Objectives
+
+This software helps to design a solution which integrates multiple items.
+
+
+# pbs-cli commands
+
+## Add item :  `add <pn> <name>`
+Adds a new item to the store where :
+- `<pn>` is the part number of the item (its reference)
+- `<name>` is a name or label of the item  
+
 # Example
 
 ```
