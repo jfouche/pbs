@@ -16,7 +16,7 @@ async function create_item() {
       <legend>Create new part number</legend>
       <label for="name">Name</label>
       <input id="name-input" v-model="name" placeholder="Enter a name..." />
-      <button type="button" @click="create_item()">Greet</button>
+      <button type="button" @click="create_item()">Create</button>
     </fieldset>
     <p>{{ message }}</p>
   </div>

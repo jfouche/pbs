@@ -6,8 +6,7 @@ const greetMsg = ref("");
 const pn = ref("");
 const name = ref("");
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
+async function import_cots() {
   greetMsg.value = await invoke("greet", { name: name.value });
 }
 </script>
@@ -20,11 +19,7 @@ async function greet() {
       <input id="pn-input" v-model="pn" placeholder="Enter the COTS PN" />
       <label for="name">Name</label>
       <input id="name-input" v-model="name" placeholder="Enter a name..." />
+      <button type="button" @click="import_cots()">Create</button>
     </fieldset>
-    <label></label>
-    <input id="greet-input" v-model="name" placeholder="Enter a name..." />
-    <button type="button" @click="greet()">Greet</button>
   </div>
-
-  <p>{{ greetMsg }}</p>
 </template>

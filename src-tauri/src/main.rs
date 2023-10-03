@@ -5,12 +5,11 @@
 
 use std::sync::Mutex;
 
-use pbs_core::Store;
+use pbs_core::{Item, Store};
 use tauri::State;
 
 struct StoreState(Mutex<Store>);
 
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
 fn create_item(name: &str, store: State<StoreState>) -> Result<String, String> {
     match store.0.lock().unwrap().create(name) {
@@ -19,11 +18,33 @@ fn create_item(name: &str, store: State<StoreState>) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+fn import_item(pn: &str, name: &str, store: State<StoreState>) -> Result<String, String> {
+    match store.0.lock().unwrap().new_item(pn, name) {
+        Ok(item) => Ok(format!("Add {}, PN : {}", item.name(), item.pn())),
+        Err(e) => Err(format!("{e:?}")),
+    }
+}
+
+#[tauri::command]
+fn search_items(pattern: &str, store: State<StoreState>) -> Result<Vec<Item>, String> {
+    store
+        .0
+        .lock()
+        .unwrap()
+        .search_items(pattern)
+        .map_err(|e| format!("{e:?}"))
+}
+
 fn main() {
     let store = Store::open("store.db3").unwrap();
     tauri::Builder::default()
         .manage(StoreState(Mutex::new(store)))
-        .invoke_handler(tauri::generate_handler![create_item])
+        .invoke_handler(tauri::generate_handler![
+            create_item,
+            import_item,
+            search_items
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

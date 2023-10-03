@@ -5,10 +5,11 @@ use rusqlite::{
     types::{FromSql, FromSqlResult, ToSqlOutput, Value, ValueRef},
     Connection, ToSql,
 };
+use serde::Serialize;
 
 pub struct Database(Connection);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize)]
 pub enum ItemMaturity {
     InProgress = 0,
     Released = 1,
@@ -40,6 +41,7 @@ impl ToSql for ItemMaturity {
     }
 }
 
+#[derive(Serialize)]
 struct InnerItem {
     pn: String,
     name: String,
@@ -69,6 +71,8 @@ impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for InnerItem {
         })
     }
 }
+
+#[derive(Serialize)]
 
 pub struct Item {
     _id: usize,
