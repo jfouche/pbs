@@ -6,7 +6,10 @@ const name = ref("");
 const message = ref("");
 
 async function create_item() {
-  message.value = await invoke("create_item", { name: name.value });
+  if (name.value !== '') {
+    message.value = await invoke("create_item", { name: name.value });
+    name.value = "";
+  }
 }
 </script>
 
@@ -16,6 +19,7 @@ async function create_item() {
       <legend>Create new part number</legend>
       <label for="name">Name</label>
       <input id="name-input" v-model="name" placeholder="Enter a name..." />
+      <br />
       <button type="button" @click="create_item()">Create</button>
     </fieldset>
     <p>{{ message }}</p>
