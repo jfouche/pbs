@@ -1,22 +1,34 @@
 <script setup lang="ts">
+import TopMenuItem from "./TopMenuItem.vue";
 import { ref } from "vue";
 
-const emit = defineEmits(['changePage'])
+const emit = defineEmits<{(event: 'changePage', page: string): void}>();
 
-
-const name = ref("");
-const message = ref("");
+const active_page = ref("page_search_items");
+emit('changePage', active_page.value);
 
 async function change_page(page: string) {
-  console.log(page)
+  console.log("TopMenu::change_page " + page);
+  active_page.value = page;
   emit('changePage', page);
 }
 </script>
 
 <template>
-  <div>
-    <div><a href="#" @click="change_page('page_new_item')">New item</a></div>
-    <div><a href="#" @click="change_page('page_search')">Search item</a></div>
-    <div><a href="#" @click="change_page('page_view_item')">View item</a></div>
-  </div>
+  <ul>
+    <TopMenuItem :label="'New item'"    :page="'page_new_item'"     :active_page="active_page"  @change-page="change_page"/>
+    <TopMenuItem :label="'Search item'" :page="'page_search_items'" :active_page="active_page"  @change-page="change_page"/>
+    <TopMenuItem :label="'View item'"   :page="'page_view_item'"    :active_page="active_page"  @change-page="change_page"/>
+  </ul>
 </template>
+
+
+<style scoped>
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #333;
+}
+</style>
