@@ -8,8 +8,18 @@ This software helps to design a solution which integrates multiple items.
 
 # Tauri
 
+## Dev
+need `cargo` and `npm`
+``` shell
+cargo install create-tauri-app --locked
+cargo install tauri-cli
+npm install
+```
+
 ## Run
-`npm run tauri dev`
+``` shell
+npm run tauri dev
+```
 
 
 # pbs-cli commands
