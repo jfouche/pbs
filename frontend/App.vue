@@ -7,7 +7,7 @@ import PageSearchItem from "./components/search/PageSearchItem.vue";
 import PageViewItem from "./components/PageViewItem.vue";
 import { Item } from "./item";
 
-const active_page = ref('')
+const active_page = ref('page_search_items')
 const active_item = ref<Item>();
 
 function changePage(page: string) {
@@ -23,7 +23,7 @@ async function select_item(id: number) {
 </script>
 
 <template>
-  <TopMenu  @changePage="changePage" />
+  <TopMenu :active_page="active_page" @changePage="changePage" />
   <div class="container">
     <h1>Product Breakdow Software</h1>
     <PageNewItem v-if="active_page === 'page_new_item'"/>

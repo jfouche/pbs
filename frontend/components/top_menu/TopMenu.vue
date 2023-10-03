@@ -2,17 +2,18 @@
 import TopMenuItem from "./TopMenuItem.vue";
 import { ref } from "vue";
 
+interface Props {
+  active_page: string
+}
+const props = defineProps<Props>();
+
 interface Events {
   (event: 'changePage', page: string): void,
 }
 const emit = defineEmits<Events>();
 
-const active_page = ref("page_search_items");
-emit('changePage', active_page.value);
-
 async function change_page(page: string) {
   console.log("TopMenu::change_page " + page);
-  active_page.value = page;
   emit('changePage', page);
 }
 </script>
