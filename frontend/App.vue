@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-import TopMenu from "./components/TopMenu.vue";
-import PageNewItem from "./components/PageNewItem.vue";
-import PageSearchItem from "./components/PageSearchItem.vue";
+import TopMenu from "./components/top_menu/TopMenu.vue";
+import PageNewItem from "./components/new_item/PageNewItem.vue";
+import PageSearchItem from "./components/search/PageSearchItem.vue";
 import PageViewItem from "./components/PageViewItem.vue";
 
 const active_page = ref('')

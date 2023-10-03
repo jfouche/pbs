@@ -4,7 +4,7 @@ import { Item } from "../../item";
 interface Props {
   item: Item
 }
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 </script>
 
 <template>

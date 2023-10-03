@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import SearchItemRow from "./search/SearchItemRow.vue";
+import SearchItemRow from "./SearchItemRow.vue";
 
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
-import { ArrayOfItem } from "../item";
+import { ArrayOfItem } from "../../item";
 
 const pattern = ref("");
 const results = ref<ArrayOfItem>();

@@ -2,7 +2,11 @@
 import TopMenuItem from "./TopMenuItem.vue";
 import { ref } from "vue";
 
-const emit = defineEmits<{(event: 'changePage', page: string): void}>();
+interface Events {
+  (event: 'changePage', page: string): void,
+  (event: 'changePage2', page: string): void
+}
+const emit = defineEmits<Events>();
 
 const active_page = ref("page_search_items");
 emit('changePage', active_page.value);

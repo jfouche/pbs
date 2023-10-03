@@ -1,24 +1,25 @@
 <script setup lang="ts">
-import { ref } from "vue";
 
-const props = defineProps(['label', 'page', 'active_page'])
+interface Props {
+  label: string,
+  page: string,
+  active_page: string
+}
+const props = defineProps<Props>();
 
-const emit = defineEmits<{(event: 'changePage', page: string): void}>();
+interface Events {
+  (event: 'changePage', page: string): void
+}
+const emit = defineEmits<Events>();
 
 async function change_page() {
   console.log("TopMenuItem<" + props.page + ">::change_page()");
   emit('changePage', props.page);
 }
-
-async function change_page2() {
-  console.log("TopMenuItem<" + props.page + ">::change_page2()");
-  emit('changePage', props.page);
-}
-
 </script>
 
 <template>
-    <li v-bind:class="props.active_page === props.page ? 'active' : ''" @change-page="change_page2">
+    <li v-bind:class="props.active_page === props.page ? 'active' : ''">
       <a href="#" @click="change_page">{{ props.label }}</a>
     </li>
 </template>
