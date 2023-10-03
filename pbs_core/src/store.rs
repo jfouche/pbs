@@ -85,4 +85,9 @@ impl Store {
     pub fn search_items(&self, pattern: &str) -> Result<Vec<Item>> {
         self.db.search(pattern)
     }
+
+    /// Get an item by it's id
+    pub fn get_item_by_id(&self, id: usize) -> Result<Item> {
+        self.db.get_item_by_id(id)
+    }
 }

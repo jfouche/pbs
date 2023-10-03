@@ -52,6 +52,14 @@ fn search_items(pattern: &str, store: State<StoreState>) -> Result<Vec<AppItem>,
     }
 }
 
+#[tauri::command]
+fn get_item_by_id(id: usize, store: State<StoreState>) -> Result<AppItem, String> {
+    match store.0.lock().unwrap().get_item_by_id(id) {
+        Ok(item) => Ok(AppItem::from(&item)),
+        Err(e) => Err(format!("{e:?}")),
+    }
+}
+
 fn main() {
     let store = Store::open("store.db3").unwrap();
     tauri::Builder::default()
@@ -59,7 +67,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             create_item,
             import_item,
-            search_items
+            search_items,
+            get_item_by_id
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

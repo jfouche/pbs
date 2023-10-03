@@ -4,7 +4,6 @@ import { ref } from "vue";
 
 interface Events {
   (event: 'changePage', page: string): void,
-  (event: 'changePage2', page: string): void
 }
 const emit = defineEmits<Events>();
 
