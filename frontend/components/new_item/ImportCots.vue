@@ -21,6 +21,7 @@ async function import_cots() {
       <legend>Import a COTS</legend>
       <label for="pn">Part numer</label>
       <input id="pn-input" v-model="pn" placeholder="Enter the COTS PN" />
+      <br />
       <label for="name">Name</label>
       <input id="name-input" v-model="name" placeholder="Enter a name..." />
       <br />
