@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import SearchItemRow from "./SearchItemRow.vue";
+import SearchItemRow from "./search/SearchItemRow.vue";
 
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
-import {ArrayOfItem} from "../item";
+import { ArrayOfItem } from "../item";
 
 const pattern = ref("");
 const results = ref<ArrayOfItem>();
@@ -23,6 +23,12 @@ async function search_items() {
   SEARCH ITEM
   <input v-model="pattern" @input="search_items">
   <h1>Results</h1>
-  <SearchItemRow v-for="item in results" :item="item"/>
-  <div></div>
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Part number</th>
+      <th>Actions</th>
+    </tr>
+    <SearchItemRow v-for="item in results" :item="item" />
+  </table>
 </template>

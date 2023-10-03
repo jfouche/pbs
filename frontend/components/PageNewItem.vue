@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import NewItem from "./NewItem.vue";
-import ImportCots from "./ImportCots.vue";
+import NewItem from "./new_item/NewItem.vue";
+import ImportCots from "./new_item/ImportCots.vue";
 
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
