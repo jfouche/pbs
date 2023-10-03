@@ -1,4 +1,5 @@
-/target/
+target/
+node_modules/
 *.db3
 *.db3-journal
 

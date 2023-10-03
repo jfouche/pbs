@@ -6,6 +6,11 @@ Allow you to manage a product breakdown
 
 This software helps to design a solution which integrates multiple items.
 
+# Tauri
+
+## Run
+`npm run tauri dev`
+
 
 # pbs-cli commands
 

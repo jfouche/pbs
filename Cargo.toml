@@ -1,4 +1,4 @@
 [workspace]
-members = ["pbs_core", "pbs_cli", "pbs_ui"]
-default-members = ["pbs_ui"]
+members = ["pbs_core", "pbs_cli", "src-tauri"]
+default-members = ["src-tauri"]
 resolver = "2"
