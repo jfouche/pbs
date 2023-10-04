@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SearchItemRow from "./SearchItemRow.vue";
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
 import { ArrayOfItem } from "../../item";
 
@@ -9,9 +9,13 @@ interface Events {
 }
 const emit = defineEmits<Events>();
 
-
+const input = ref<HTMLInputElement | null>(null);
 const pattern = ref("");
 const results = ref<ArrayOfItem>();
+
+onMounted(() => {
+  input.value?.focus();
+});
 
 async function search_items() {
   if (pattern.value.length >= 2) {
@@ -31,7 +35,7 @@ async function select_item(id: number) {
 
 <template>
   SEARCH ITEM
-  <input v-model="pattern" @input="search_items">
+  <input ref="input" v-model="pattern" @input="search_items">
   <h1>Results</h1>
   <table>
     <tr>
