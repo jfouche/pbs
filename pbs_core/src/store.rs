@@ -86,8 +86,25 @@ impl Store {
         self.db.search(pattern)
     }
 
+    /// Get all items children
+    pub fn get_children_by_id(&self, id: usize) -> Result<Vec<(Item, usize)>> {
+        self.db.get_children_by_parent_id(id)
+    }
+
     /// Get an item by it's id
     pub fn get_item_by_id(&self, id: usize) -> Result<Item> {
         self.db.get_item_by_id(id)
+    }
+
+    /// Add a child to an item
+    pub fn add_child_by_id(
+        &mut self,
+        parent_id: usize,
+        child_pn: &str,
+        quantity: usize,
+    ) -> Result<()> {
+        let parent_item = self.db.get_item_by_id(parent_id)?;
+        let child_item = self.db.get_item_by_pn(child_pn)?;
+        self.db.add_child(&parent_item, &child_item, quantity)
     }
 }

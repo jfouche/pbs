@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import TopMenu from "./components/top_menu/TopMenu.vue";
 import PageNewItem from "./components/new_item/PageNewItem.vue";
 import PageSearchItem from "./components/search/PageSearchItem.vue";
-import PageViewItem from "./components/PageViewItem.vue";
+import PageViewItem from "./components/view_item/PageViewItem.vue";
 import { Item } from "./item";
 
 const active_page = ref('page_search_items')

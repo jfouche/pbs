@@ -14,8 +14,8 @@ const pattern = ref("");
 const results = ref<ArrayOfItem>();
 
 async function search_items() {
-  if (pattern.value.length >= 3) {
-    results.value = await invoke("search_items", { pattern: pattern.value });
+  if (pattern.value.length >= 2) {
+    results.value = await invoke("search_items", { pattern: `%${pattern.value}%` });
   }
   else {
     results.value = [];

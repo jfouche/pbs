@@ -267,13 +267,13 @@ impl Database {
     }
 
     /// Get children of an item
-    pub(crate) fn get_children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
+    pub(crate) fn get_children_by_parent_id(&self, parent_id: usize) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self
             .0
             .prepare("SELECT * FROM view_children WHERE id_parent = ?1")
             .convert()?;
         let items = stmt
-            .query_map([parent._id], |row| {
+            .query_map([parent_id], |row| {
                 let item = Item::try_from(row)?;
                 let quantity = row.get("quantity")?;
                 Ok((item, quantity))
@@ -282,6 +282,11 @@ impl Database {
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
         Ok(items)
+    }
+
+    /// Get children of an item
+    pub(crate) fn get_children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
+        self.get_children_by_parent_id(parent.id())
     }
 
     ///

@@ -28,6 +28,21 @@ impl From<&Item> for AppItem {
     }
 }
 
+#[derive(Serialize)]
+struct ChildQuantity {
+    item: AppItem,
+    quantity: usize,
+}
+
+impl From<&(Item, usize)> for ChildQuantity {
+    fn from(value: &(Item, usize)) -> Self {
+        ChildQuantity {
+            item: AppItem::from(&value.0),
+            quantity: value.1,
+        }
+    }
+}
+
 #[tauri::command]
 fn create_item(name: &str, store: State<StoreState>) -> Result<String, String> {
     match store.0.lock().unwrap().create(name) {
@@ -60,6 +75,32 @@ fn get_item_by_id(id: usize, store: State<StoreState>) -> Result<AppItem, String
     }
 }
 
+#[tauri::command]
+fn get_children(id: usize, store: State<StoreState>) -> Result<Vec<ChildQuantity>, String> {
+    match store.0.lock().unwrap().get_children_by_id(id) {
+        Ok(childrens) => Ok(childrens
+            .iter()
+            .map(ChildQuantity::from)
+            .collect::<Vec<_>>()),
+        Err(e) => Err(format!("{e:?}")),
+    }
+}
+
+#[tauri::command]
+fn add_child(
+    parent_id: usize,
+    child_pn: &str,
+    quantity: usize,
+    store: State<StoreState>,
+) -> Result<(), String> {
+    store
+        .0
+        .lock()
+        .unwrap()
+        .add_child_by_id(parent_id, child_pn, quantity)
+        .map_err(|e| format!("{e:?}"))
+}
+
 fn main() {
     let store = Store::open("store.db3").unwrap();
     tauri::Builder::default()
@@ -68,7 +109,9 @@ fn main() {
             create_item,
             import_item,
             search_items,
-            get_item_by_id
+            get_item_by_id,
+            get_children,
+            add_child
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
