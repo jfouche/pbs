@@ -1,0 +1,39 @@
+body {
+    background-color: #acd5fd;
+}
+
+/* TOP MENU */
+
+#top-menu {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #333;
+}
+
+#top-menu li {
+    float: left;
+}
+
+#top-menu li a {
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+#top-menu li a:hover {
+    background-color: #111;
+    cursor: pointer;
+}
+
+#top-menu li.active {
+    background-color: black;
+}
+
+#top-menu li.active a {
+    text-decoration: underline;
+    color: lightgreen;
+}

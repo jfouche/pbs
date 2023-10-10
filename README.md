@@ -11,14 +11,13 @@ This software helps to design a solution which integrates multiple items.
 ## Dev
 need `cargo` and `npm`
 ``` shell
-cargo install create-tauri-app --locked
-cargo install tauri-cli
-npm install
+cargo install --git https://github.com/DioxusLabs/cli
+npm install -D tailwindcss
 ```
 
 ## Run
 ``` shell
-npm run tauri dev
+cargo run
 ```
 
 

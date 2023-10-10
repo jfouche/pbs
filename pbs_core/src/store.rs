@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::RwLock};
 
-use crate::{database::Database, Item, Result};
+use crate::{database::Database, Error, Item, Result};
 
 pub fn simple_8digits_pn_provider(db: &mut Database) -> Result<String> {
     const KEY: &str = "simple_pn_provider";
@@ -11,64 +11,87 @@ pub fn simple_8digits_pn_provider(db: &mut Database) -> Result<String> {
 }
 
 pub struct Store {
-    db: Database,
+    db: RwLock<Database>,
 }
+
+unsafe impl Sync for Store {}
 
 impl Store {
     /// Open the store
     pub fn open(url: &str) -> Result<Self> {
         let db = Database::open(url)?;
-        Ok(Store { db })
+        Ok(Store {
+            db: RwLock::new(db),
+        })
     }
 
     /// Get a config value from the database
     pub fn get_config(&self, key: &str) -> Result<String> {
-        self.db.get_config(key)
+        self.db
+            .read()
+            .map_err(|_| Error::PoisonousDatabaseLock)?
+            .get_config(key)
     }
 
     /// Set a config value in the database
     pub fn set_config(&mut self, key: &str, value: &str) -> Result<()> {
-        self.db.set_config(key, value)
+        self.db
+            .write()
+            .map_err(|_| Error::PoisonousDatabaseLock)?
+            .set_config(key, value)
     }
 
     /// Create a new item, allocating a new PN
     pub fn create(&mut self, name: &str) -> Result<Item> {
-        let pn = simple_8digits_pn_provider(&mut self.db)?;
-        self.db.insert_item(&pn, name)
+        let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
+        let pn = simple_8digits_pn_provider(&mut db)?;
+        db.insert_item(&pn, name)
     }
 
     // Add a new item to the store
     pub fn new_item(&mut self, pn: &str, name: &str) -> Result<Item> {
-        self.db.insert_item(pn, name)
+        self.db
+            .write()
+            .map_err(|_| Error::PoisonousDatabaseLock)?
+            .insert_item(pn, name)
     }
 
     /// Save the item
     pub fn save_item(&mut self, item: Item) -> Result<()> {
-        self.db.update_item(item)
+        self.db
+            .write()
+            .map_err(|_| Error::PoisonousDatabaseLock)?
+            .update_item(item)
     }
 
     /// Get all items
     pub fn get_items(&self) -> Result<Vec<Item>> {
-        self.db.get_items()
+        self.db
+            .read()
+            .map_err(|_| Error::PoisonousDatabaseLock)?
+            .get_items()
     }
 
     /// Add a child to an item
     pub fn add_child(&mut self, parent_pn: &str, child_pn: &str, quantity: usize) -> Result<()> {
-        let parent_item = self.db.get_item_by_pn(parent_pn)?;
-        let child_item = self.db.get_item_by_pn(child_pn)?;
-        self.db.add_child(&parent_item, &child_item, quantity)
+        let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
+        let parent_item = db.get_item_by_pn(parent_pn)?;
+        let child_item = db.get_item_by_pn(child_pn)?;
+        db.add_child(parent_item.id(), child_item.id(), quantity)
     }
 
     /// Get all items children
     pub fn get_children(&self, pn: &str) -> Result<Vec<(Item, usize)>> {
-        let item = self.db.get_item_by_pn(pn)?;
-        self.db.get_children(&item)
+        let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
+        let item = db.get_item_by_pn(pn)?;
+        db.get_children(&item)
     }
 
     /// Get all parent items using the given item
     pub fn where_used(&self, pn: &str) -> Result<Vec<Item>> {
-        let item = self.db.get_item_by_pn(pn)?;
-        self.db.where_used(&item)
+        let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
+        let item = db.get_item_by_pn(pn)?;
+        db.where_used(&item)
     }
 
     /// Get all items and quantity that compose the given item
@@ -83,28 +106,36 @@ impl Store {
 
     /// Search for items matching pattern (pn or name)
     pub fn search_items(&self, pattern: &str) -> Result<Vec<Item>> {
-        self.db.search(pattern)
+        self.db
+            .read()
+            .map_err(|_| Error::PoisonousDatabaseLock)?
+            .search(pattern)
     }
 
     /// Get all items children
     pub fn get_children_by_id(&self, id: usize) -> Result<Vec<(Item, usize)>> {
-        self.db.get_children_by_parent_id(id)
+        self.db
+            .read()
+            .map_err(|_| Error::PoisonousDatabaseLock)?
+            .get_children_by_parent_id(id)
     }
 
     /// Get an item by it's id
     pub fn get_item_by_id(&self, id: usize) -> Result<Item> {
-        self.db.get_item_by_id(id)
+        self.db
+            .read()
+            .map_err(|_| Error::PoisonousDatabaseLock)?
+            .get_item_by_id(id)
     }
 
     /// Add a child to an item
     pub fn add_child_by_id(
         &mut self,
         parent_id: usize,
-        child_pn: &str,
+        child_id: usize,
         quantity: usize,
     ) -> Result<()> {
-        let parent_item = self.db.get_item_by_id(parent_id)?;
-        let child_item = self.db.get_item_by_pn(child_pn)?;
-        self.db.add_child(&parent_item, &child_item, quantity)
+        let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
+        db.add_child(parent_id, child_id, quantity)
     }
 }

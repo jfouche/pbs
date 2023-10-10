@@ -5,10 +5,11 @@ use rusqlite::{
     types::{FromSql, FromSqlResult, ToSqlOutput, Value, ValueRef},
     Connection, ToSql,
 };
+use serde::Serialize;
 
 pub struct Database(Connection);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize)]
 pub enum ItemMaturity {
     InProgress = 0,
     Released = 1,
@@ -40,64 +41,34 @@ impl ToSql for ItemMaturity {
     }
 }
 
-struct InnerItem {
+#[derive(Serialize)]
+pub struct Item {
+    _id: usize,
     pn: String,
     name: String,
     maturity: ItemMaturity,
     version: usize,
 }
 
-impl InnerItem {
-    fn new(pn: &str, name: &str) -> Self {
-        InnerItem {
-            pn: pn.to_string(),
-            name: name.to_string(),
-            version: 1,
-            maturity: ItemMaturity::InProgress,
-        }
-    }
-}
-
-impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for InnerItem {
-    type Error = rusqlite::Error;
-    fn try_from(value: &rusqlite::Row) -> std::result::Result<Self, Self::Error> {
-        Ok(InnerItem {
-            pn: value.get("pn")?,
-            name: value.get("name")?,
-            version: value.get("version")?,
-            maturity: value.get("maturity")?,
-        })
-    }
-}
-
-pub struct Item {
-    _id: usize,
-    inner: InnerItem,
-}
-
 impl Item {
-    fn new(id: usize, inner: InnerItem) -> Self {
-        Item { _id: id, inner }
-    }
-
     pub fn id(&self) -> usize {
         self._id
     }
 
     pub fn pn(&self) -> &str {
-        &self.inner.pn
+        &self.pn
     }
 
     pub fn name(&self) -> &str {
-        &self.inner.name
+        &self.name
     }
 
     pub fn version(&self) -> usize {
-        self.inner.version
+        self.version
     }
 
     pub fn maturity(&self) -> ItemMaturity {
-        self.inner.maturity
+        self.maturity
     }
 }
 
@@ -133,7 +104,10 @@ impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
     fn try_from(value: &rusqlite::Row) -> std::result::Result<Self, Self::Error> {
         Ok(Item {
             _id: value.get("id")?,
-            inner: InnerItem::try_from(value)?,
+            pn: value.get("pn")?,
+            name: value.get("name")?,
+            version: value.get("version")?,
+            maturity: value.get("maturity")?,
         })
     }
 }
@@ -183,20 +157,17 @@ impl Database {
 
     // Add a new item to the store
     pub(crate) fn insert_item(&self, pn: &str, name: &str) -> Result<Item> {
-        let inner_item = InnerItem::new(pn, name);
+        const DEFAULT_VERSION: usize = 1;
+        const DEFAULT_MATURITY: ItemMaturity = ItemMaturity::InProgress;
+
         self.0
             .execute(
                 "INSERT INTO items(pn, name, version, maturity) VALUES(?1, ?2, ?3, ?4)",
-                (
-                    &inner_item.pn,
-                    &inner_item.name,
-                    inner_item.version,
-                    inner_item.maturity,
-                ),
+                (pn, name, DEFAULT_VERSION, DEFAULT_MATURITY),
             )
             .convert()?;
         let id = self.0.last_insert_rowid();
-        Ok(Item::new(id as usize, inner_item))
+        self.get_item_by_id(id as usize)
     }
 
     /// Retrive all [Item]s
@@ -251,12 +222,17 @@ impl Database {
     }
 
     /// Add a child to an item
-    pub(crate) fn add_child(&mut self, parent: &Item, child: &Item, quantity: usize) -> Result<()> {
+    pub(crate) fn add_child(
+        &mut self,
+        parent_id: usize,
+        child_id: usize,
+        quantity: usize,
+    ) -> Result<()> {
         if self
             .0
             .execute(
                 "INSERT INTO children (id_parent, id_child, quantity) VALUES(?1, ?2, ?3)",
-                (parent._id, child._id, quantity),
+                (parent_id, child_id, quantity),
             )
             .convert()?
             != 1
@@ -343,13 +319,13 @@ mod test {
         let item1 = db.insert_item("1", "PARENT").unwrap();
         let item2 = db.insert_item("11", "CHILD1").unwrap();
         let item3 = db.insert_item("12", "CHILD2").unwrap();
-        db.add_child(&item1, &item2, 1).unwrap();
-        db.add_child(&item1, &item3, 2).unwrap();
+        db.add_child(item1._id, item2._id, 1).unwrap();
+        db.add_child(item1._id, item3._id, 2).unwrap();
         let children = db.get_children(&item1).unwrap();
         assert_eq!(2, children.len());
 
         // can't add an already existing child
-        assert!(db.add_child(&item1, &item3, 2).is_err());
+        assert!(db.add_child(item1._id, item3._id, 2).is_err());
     }
 
     #[test]
