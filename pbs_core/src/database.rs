@@ -5,11 +5,11 @@ use rusqlite::{
     types::{FromSql, FromSqlResult, ToSqlOutput, Value, ValueRef},
     Connection, ToSql,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub struct Database(Connection);
 
-#[derive(Copy, Clone, Serialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum ItemMaturity {
     InProgress = 0,
     Released = 1,
@@ -41,7 +41,7 @@ impl ToSql for ItemMaturity {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Item {
     _id: usize,
     pn: String,

@@ -1,22 +1,41 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
-    routing::{get, post, Router},
+    response::{IntoResponse, Response},
+    routing::{get, Router},
     Json,
 };
 pub use pbs_core::{Item, Store};
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, sync::Arc};
 
-pub async fn serve(port: u16) {
+enum Error {
+    StoreError,
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        (StatusCode::INTERNAL_SERVER_ERROR, "MY ERROR").into_response()
+    }
+}
+
+#[derive(Clone)]
+struct AppState {
+    store: Arc<Store>,
+}
+
+pub async fn serve(port: u16) -> Result<(), pbs_core::Error> {
     println!("pbs_srv::serve({port})");
-    let store_state = Arc::new(Store::open("store.db3").unwrap());
+
+    let store_state = AppState {
+        store: Arc::new(Store::open("store.db3")?),
+    };
 
     let app = Router::new()
-        .with_state(store_state)
-        .route("/", get(root))
-        // .route("/search", get(search))
-        ;
+        // .route("/", get(root))
+        .route("/item/:id", get(get_item))
+        .route("/search", get(search))
+        .with_state(store_state);
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
@@ -25,68 +44,30 @@ pub async fn serve(port: u16) {
         .serve(app.into_make_service())
         .await
         .unwrap();
+
+    Ok(())
 }
-
-// basic handler that responds with a static string
-async fn root() -> &'static str {
-    "Product Breakdown Software!"
-}
-
-// the input to our `create_user` handler
-#[derive(Deserialize)]
-struct NewItem {
-    name: String,
-    pn: String,
-}
-
-// async fn create_item(
-//     // this argument tells axum to parse the request body
-//     // as JSON into a `CreateUser` type
-//     Json(payload): Json<NewItem>,
-// ) -> (StatusCode, Json<User>) {
-//     // insert your application logic here
-//     let user = User {
-//         id: 1337,
-//         username: payload.name,
-//     };
-
-//     // this will be converted into a JSON response
-//     // with a status code of `201 Created`
-//     (StatusCode::CREATED, Json(user))
-// }
 
 #[derive(Serialize, Deserialize)]
-struct ItemChild {
-    parent_id: usize,
-    child_id: usize,
-    quantity: usize,
-}
-
-fn add_child(
-    State(mut store): State<Arc<Store>>,
-    Json(item_child): Json<ItemChild>,
-) -> Result<(), String> {
-    let store = Arc::get_mut(&mut store).unwrap();
-    store
-        .add_child_by_id(
-            item_child.parent_id,
-            item_child.child_id,
-            item_child.quantity,
-        )
-        .map_err(|e| format!("{e:?}"))
-}
-
-#[derive(Deserialize)]
 struct Pattern {
     pattern: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct SearchResult(Vec<Item>);
 
-async fn search(State(store): State<Arc<Store>>, query: Query<Pattern>) -> Json<Vec<Item>> {
-    match store.search_items(&query.pattern) {
+async fn search(State(store): State<AppState>, Query(query): Query<Pattern>) -> impl IntoResponse {
+    match store.store.search_items(&query.pattern) {
         Ok(items) => Json(items),
-        Err(e) => Json(vec![]),
+        Err(_e) => Json(vec![]),
     }
+}
+
+async fn get_item(
+    State(store): State<AppState>,
+    Path(id): Path<usize>,
+) -> Result<Json<Item>, Error> {
+    let store = store.store;
+    let item = store.get_item_by_id(id).map_err(|_e| Error::StoreError)?;
+    Ok(Json(item))
 }
