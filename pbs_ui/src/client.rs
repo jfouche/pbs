@@ -1,15 +1,26 @@
-pub static BASE_API_URL: &str = "http://localhost:3030/";
+use pbs_srv::{Item, NewItem};
 
-// pub async fn get_stories(count: usize) -> Result<Vec<StoryItem>, reqwest::Error> {
-//     let url = format!("{}topstories.json", BASE_API_URL);
-//     let stories_ids = &reqwest::get(&url).await?.json::<Vec<i64>>().await?[..count];
+pub static BASE_API_URL: &str = "http://localhost:3030";
 
-//     let story_futures = stories_ids[..usize::min(stories_ids.len(), count)]
-//         .iter()
-//         .map(|&story_id| get_story_preview(story_id));
-//     Ok(join_all(story_futures)
-//         .await
-//         .into_iter()
-//         .filter_map(|story| story.ok())
-//         .collect())
-// }
+pub async fn search_items(pattern: &str) -> Result<Vec<Item>, reqwest::Error> {
+    let url = format!("{BASE_API_URL}/search?pattern={pattern}");
+    let items = reqwest::get(&url).await?.json::<Vec<Item>>().await?;
+    Ok(items)
+}
+
+pub async fn new_item(name: &str) -> Result<Item, reqwest::Error> {
+    let url = format!("{BASE_API_URL}/item");
+    let new_item = NewItem {
+        name: name.to_string(),
+    };
+    let body = serde_json::to_string(&new_item).unwrap();
+    let client = reqwest::Client::new();
+    let item = client
+        .post(&url)
+        .body(body)
+        .send()
+        .await?
+        .json::<Item>()
+        .await?;
+    Ok(item)
+}

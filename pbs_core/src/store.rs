@@ -42,14 +42,14 @@ impl Store {
     }
 
     /// Create a new item, allocating a new PN
-    pub fn create(&mut self, name: &str) -> Result<Item> {
+    pub fn create_item(&mut self, name: &str) -> Result<Item> {
         let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
         let pn = simple_8digits_pn_provider(&mut db)?;
         db.insert_item(&pn, name)
     }
 
-    // Add a new item to the store
-    pub fn new_item(&mut self, pn: &str, name: &str) -> Result<Item> {
+    // Add a exinsting item (e.g. existing PN) to the store
+    pub fn import_item(&mut self, pn: &str, name: &str) -> Result<Item> {
         self.db
             .write()
             .map_err(|_| Error::PoisonousDatabaseLock)?

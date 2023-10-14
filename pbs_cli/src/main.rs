@@ -51,14 +51,14 @@ impl PbsCli {
     }
 
     fn handle_create(&mut self, params: CreateParams) {
-        match self.store.create(&params.name) {
+        match self.store.create_item(&params.name) {
             Ok(item) => println!("  created {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
 
     fn handle_add(&mut self, params: AddParams) {
-        match self.store.new_item(&params.pn, &params.name) {
+        match self.store.import_item(&params.pn, &params.name) {
             Ok(item) => println!("  added {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
