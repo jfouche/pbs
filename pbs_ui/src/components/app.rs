@@ -21,6 +21,13 @@ pub fn App(cx: Scope) -> Element {
             div {
                 class:"container",
                 h1 { "Product Breakdow Software" }
+
+                match current_page {
+                    Page::NewItem => rsx!( PageNewItem { } ),
+                    Page::SearchItems => rsx!( PageSearch { } ),
+                    Page::ViewItem => rsx!( PageSearch { } )
+                }
+
                 PageNewItem { }
                 PageSearch { }
                 // PageViewItem { }
