@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use futures_util::StreamExt;
 
 use crate::client;
 
@@ -11,18 +12,40 @@ pub fn page_new_item(cx: Scope) -> Element {
 
 fn new_item(cx: Scope) -> Element {
     let name = use_state(cx, || "".to_string());
+    let message = use_state(cx, || "".to_string());
 
-    let n = name.get().clone();
+    let new_item_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
+        to_owned![message];
+        async move {
+            while let Some(name) = rx.next().await {
+                let result = client::new_item(&name).await;
+                let msg = match result {
+                    Ok(item) => format!("Item [{}] created", item.pn()),
+                    Err(e) => format!("ERROR : {e:?}"),
+                };
+                message.set(format!("[[{name}]] : {msg}"));
+            }
+        }
+    });
 
     cx.render(rsx! {
         div {
             fieldset {
                 legend { "Create new part number" }
                 label { r#for: "name", "Name" }
-                input { name: "name", "value": "{name}" },
+                input {
+                    name: "name",
+                    value: "{name}",
+                    oninput: move |evt| name.set(evt.value.clone()),
+                },
                 br {},
-                button { "Create" }
-                // button { onclick: move |_| async move { let _ = client::new_item(&n).await; }, "Create" }
+                button {
+                    onclick: move |_| {
+                        new_item_handler.send(name.get().to_owned())
+                    }
+                    , "Create"
+                }
+                div { "{message}"}
             },
             p { "MESSAGE" }
         }

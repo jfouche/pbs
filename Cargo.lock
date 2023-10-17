@@ -567,6 +567,7 @@ version = "0.1.0"
 dependencies = [
  "dioxus",
  "dioxus-desktop",
+ "futures-util",
  "pbs_srv",
  "reqwest",
  "serde",

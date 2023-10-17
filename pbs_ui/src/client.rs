@@ -13,11 +13,10 @@ pub async fn new_item(name: &str) -> Result<Item, reqwest::Error> {
     let new_item = NewItem {
         name: name.to_string(),
     };
-    let body = serde_json::to_string(&new_item).unwrap();
     let client = reqwest::Client::new();
     let item = client
         .post(&url)
-        .body(body)
+        .json(&new_item)
         .send()
         .await?
         .json::<Item>()

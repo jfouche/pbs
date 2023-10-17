@@ -95,7 +95,7 @@ async fn get_item(State(state): State<AppState>, Path(id): Path<usize>) -> Resul
     Ok(Json(item))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct NewItem {
     pub name: String,
 }
@@ -104,6 +104,7 @@ async fn new_item(
     State(state): State<AppState>,
     Json(new_item): Json<NewItem>,
 ) -> Result<Json<Item>> {
+    info!("pbs_srv::new_item({new_item:?})");
     let item = state
         .mut_store()?
         .create_item(&new_item.name)
