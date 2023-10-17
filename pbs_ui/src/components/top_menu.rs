@@ -3,14 +3,14 @@ use dioxus::prelude::*;
 use super::Page;
 
 pub fn top_menu(cx: Scope) -> Element {
-    cx.render(rsx! {
+    render!(
         ul {
             id: "top-menu",
             menu_item { title: "New item", page: Page::NewItem}
             menu_item { title: "Search item", page: Page::SearchItems}
             menu_item { title: "View item", page: Page::ViewItem}
         }
-    })
+    )
 }
 
 #[derive(Props)]
@@ -29,13 +29,16 @@ fn menu_item<'a>(cx: Scope<'a, MenuItemProps<'a>>) -> Element {
         ""
     };
 
-    cx.render(rsx! {
+    render!(
         li {
             class: class,
             a {
-                onclick: move |e| {*current_page.write() = page; e.stop_propagation(); },
+                onclick: move |e| {
+                    *current_page.write() = page;
+                    e.stop_propagation();
+                },
                 "{title}"
             }
         }
-    })
+    )
 }
