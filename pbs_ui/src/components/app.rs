@@ -1,12 +1,13 @@
 use dioxus::prelude::*;
 
-use crate::components::page_new_item::PageNewItem;
-use crate::components::page_search::PageSearch;
-use crate::components::top_menu::TopMenu;
+use crate::components::page_new_item::page_new_item;
+use crate::components::page_search::page_search;
+use crate::components::page_view_item::page_view_item;
+use crate::components::top_menu::top_menu;
 
 use crate::components::Page;
 
-pub fn App(cx: Scope) -> Element {
+pub fn app(cx: Scope) -> Element {
     use_shared_state_provider(cx, || Page::SearchItems);
     let current_page = use_shared_state::<Page>(cx).unwrap();
     let current_page = *current_page.read();
@@ -14,7 +15,7 @@ pub fn App(cx: Scope) -> Element {
     render! {
         div {
             style { include_str!("./assets/style.css") }
-            TopMenu { },
+            top_menu { },
             div {
                 "Hello, world!"
             }
@@ -23,24 +24,10 @@ pub fn App(cx: Scope) -> Element {
                 h1 { "Product Breakdow Software" }
 
                 match current_page {
-                    Page::NewItem => rsx!( PageNewItem { } ),
-                    Page::SearchItems => rsx!( PageSearch { } ),
-                    Page::ViewItem => rsx!( PageSearch { } )
+                    Page::NewItem => rsx!( page_new_item { } ),
+                    Page::SearchItems => rsx!( page_search { } ),
+                    Page::ViewItem => rsx!( page_view_item { } )
                 }
-
-                PageNewItem { }
-                PageSearch { }
-                // PageViewItem { }
-                // match current_page {
-                //     Page::NewItem => None,
-                //     Page::SearchItems => PageSearch { },
-                //     Page::ViewItem => None
-                // }
-
-            // <PageNewItem v-if="active_page === 'page_new_item'"/>
-            // <PageSearchItem v-else-if="active_page === 'page_search_items'"  @item-selection="select_item"/>
-            // <PageViewItem v-else-if="active_page === 'page_view_item'" :item="active_item"/>
-            // <p v-else>UNKNOWN PAGE</p>
             }
         }
     }

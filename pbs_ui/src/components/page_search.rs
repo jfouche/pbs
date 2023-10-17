@@ -3,13 +3,17 @@ use pbs_srv::Item;
 
 use crate::client;
 
-pub fn PageSearch(cx: Scope) -> Element {
+pub fn page_search(cx: Scope) -> Element {
     use_shared_state_provider(cx, || SearchState::Unset);
+
+    let pattern = use_state(cx, || "".to_string());
+    let results: &UseState<Option<Vec<Item>>> = use_state(cx, || None);
 
     cx.render(rsx! {
         h2 { "Search item" },
         input {
-            oninput: |e| {}
+            "value": "{pattern}",
+            oninput: |e| { resolve_search(pattern.get(), results.clone()); }
         }
         h2 { "Results" },
         table {
@@ -20,6 +24,11 @@ pub fn PageSearch(cx: Scope) -> Element {
                 th { "Maturity" },
                 th { "Action" },
             }
+            match results.get() {
+                Some(items) => { items.iter().map(|i| rsx!( item_row { item: i })); },
+                None => {rsx!( tr { td { "collspan": 5, "Enter pattern" } } );}
+            }
+
         }
     })
 }
@@ -35,7 +44,7 @@ struct ItemRowProps<'a> {
     item: &'a Item,
 }
 
-fn ItemRow<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
+fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
     cx.render(rsx! {
         tr {
             td { cx.props.item.name() },
@@ -47,19 +56,15 @@ fn ItemRow<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
     })
 }
 
-// async fn resolve_search<'a>(
-//     search_results: UseRef<Option<&'a Vec<Item>>>,
-//     preview_state: UseSharedState<SearchState>,
-//     story_id: i64,
-// ) {
-//     if let Some(cached) = *search_results.read() {
-//         *preview_state.write() = SearchState::Loaded(*cached);
-//         return;
-//     }
-
-//     *preview_state.write() = SearchState::Loading;
-//     if let Ok(items) = client::search_items().await {
-//         *preview_state.write() = SearchState::Loaded(story);
-//         *full_story.write() = Some(story);
-//     }
-// }
+async fn resolve_search(pattern: &String, search_results: UseState<Option<Vec<Item>>>) {
+    if pattern.len() > 2 {
+        match client::search_items(&pattern).await {
+            Ok(items) => {
+                search_results.set(Some(items));
+            }
+            Err(_) => {
+                todo!();
+            }
+        }
+    }
+}

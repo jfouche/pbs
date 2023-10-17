@@ -2,13 +2,13 @@ use dioxus::prelude::*;
 
 use super::Page;
 
-pub fn TopMenu(cx: Scope) -> Element {
+pub fn top_menu(cx: Scope) -> Element {
     cx.render(rsx! {
         ul {
             id: "top-menu",
-            MenuItem { title: "New item", page: Page::NewItem}
-            MenuItem { title: "Search item", page: Page::SearchItems}
-            MenuItem { title: "View item", page: Page::ViewItem}
+            menu_item { title: "New item", page: Page::NewItem}
+            menu_item { title: "Search item", page: Page::SearchItems}
+            menu_item { title: "View item", page: Page::ViewItem}
         }
     })
 }
@@ -19,7 +19,7 @@ struct MenuItemProps<'a> {
     page: Page,
 }
 
-fn MenuItem<'a>(cx: Scope<'a, MenuItemProps<'a>>) -> Element {
+fn menu_item<'a>(cx: Scope<'a, MenuItemProps<'a>>) -> Element {
     let current_page = use_shared_state::<Page>(cx).unwrap();
     let title = cx.props.title;
     let page = cx.props.page;

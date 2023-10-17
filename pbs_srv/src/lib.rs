@@ -11,6 +11,7 @@ use std::{
     net::SocketAddr,
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
+use tracing::info;
 
 pub enum Error {
     StoreError,
@@ -45,7 +46,7 @@ impl AppState {
 }
 
 pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
-    println!("pbs_srv::serve({port})");
+    info!("pbs_srv::serve({port})");
 
     let store_state = AppState {
         store: Arc::new(RwLock::new(Store::open("store.db3")?)),
@@ -78,6 +79,7 @@ struct Pattern {
 struct SearchResult(Vec<Item>);
 
 async fn search(State(state): State<AppState>, Query(query): Query<Pattern>) -> impl IntoResponse {
+    info!("search({})", query.pattern);
     match state.store.read().unwrap().search_items(&query.pattern) {
         Ok(items) => Json(items),
         Err(_e) => Json(vec![]),
@@ -85,6 +87,7 @@ async fn search(State(state): State<AppState>, Query(query): Query<Pattern>) -> 
 }
 
 async fn get_item(State(state): State<AppState>, Path(id): Path<usize>) -> Result<Json<Item>> {
+    info!("get_item({id})");
     let item = state
         .store()?
         .get_item_by_id(id)

@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use pbs_srv::Item;
 
-pub fn PageViewItem(cx: Scope) -> Element {
+pub fn page_view_item(cx: Scope) -> Element {
     render! {
         div {
             class: "tree",
@@ -24,7 +24,7 @@ struct ItemRowProps<'a> {
     item: &'a Item,
 }
 
-fn ItemRow<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
+fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
     cx.render(rsx! {
         tr {
             td { cx.props.item.name() },
