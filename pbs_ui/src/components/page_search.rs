@@ -4,8 +4,6 @@ use futures_util::StreamExt;
 use pbs_srv::Item;
 
 pub fn page_search(cx: Scope) -> Element {
-    use_shared_state_provider(cx, || SearchState::Unset);
-
     let results: &UseState<Option<Vec<Item>>> = use_state(cx, || None);
     let message = use_state(cx, || "".to_string());
 
@@ -48,12 +46,6 @@ pub fn page_search(cx: Scope) -> Element {
     })
 }
 
-enum SearchState {
-    Unset,
-    Loading,
-    Loaded(Vec<Item>),
-}
-
 #[derive(Props)]
 struct SearchResultsProps<'a> {
     items: &'a Vec<Item>,
@@ -90,17 +82,4 @@ fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
             td { "X" },
         }
     })
-}
-
-async fn resolve_search(pattern: &String, search_results: UseState<Option<Vec<Item>>>) {
-    if pattern.len() > 2 {
-        match client::search_items(&pattern).await {
-            Ok(items) => {
-                search_results.set(Some(items));
-            }
-            Err(_) => {
-                todo!();
-            }
-        }
-    }
 }
