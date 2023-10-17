@@ -1,7 +1,6 @@
+use crate::client;
 use dioxus::prelude::*;
 use futures_util::StreamExt;
-
-use crate::client;
 
 pub fn page_new_item(cx: Scope) -> Element {
     cx.render(rsx! {
@@ -45,9 +44,8 @@ fn new_item(cx: Scope) -> Element {
                     }
                     , "Create"
                 }
-                div { "{message}"}
             },
-            p { "MESSAGE" }
+            div { "{message}"}
         }
     })
 }

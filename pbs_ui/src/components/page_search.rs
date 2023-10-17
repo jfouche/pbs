@@ -1,20 +1,66 @@
-use dioxus::prelude::*;
-use pbs_srv::Item;
-
 use crate::client;
+use dioxus::prelude::*;
+use futures_util::StreamExt;
+use pbs_srv::Item;
 
 pub fn page_search(cx: Scope) -> Element {
     use_shared_state_provider(cx, || SearchState::Unset);
 
-    let pattern = use_state(cx, || "".to_string());
     let results: &UseState<Option<Vec<Item>>> = use_state(cx, || None);
+    let message = use_state(cx, || "".to_string());
+
+    let search_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
+        to_owned![message, results];
+        async move {
+            while let Some(pattern) = rx.next().await {
+                let result = client::search_items(&pattern).await;
+                match result {
+                    Ok(items) => {
+                        message.set(format!("FOUND {} items", items.len()));
+                        results.set(Some(items));
+                    }
+                    Err(e) => {
+                        results.set(None);
+                        message.set(format!("ERROR : {e:?}"))
+                    }
+                }
+            }
+        }
+    });
 
     cx.render(rsx! {
         h2 { "Search item" },
         input {
-            "value": "{pattern}",
-            oninput: |e| { resolve_search(pattern.get(), results.clone()); }
+            "value": "",
+            oninput: move |evt| {
+                let pattern = evt.value.to_owned();
+                if pattern.len() > 2 {
+                    search_handler.send(pattern);
+                }
+            },
         }
+
+        match results.get() {
+            Some(v) => rsx!( search_results { items: v } ),
+            None => rsx!( tr { td { "collspan": 5, "Enter pattern" } } )
+        }
+        div { "{message}"}
+    })
+}
+
+enum SearchState {
+    Unset,
+    Loading,
+    Loaded(Vec<Item>),
+}
+
+#[derive(Props)]
+struct SearchResultsProps<'a> {
+    items: &'a Vec<Item>,
+}
+
+fn search_results<'a>(cx: Scope<'a, SearchResultsProps<'a>>) -> Element {
+    render!(
         h2 { "Results" },
         table {
             tr {
@@ -24,19 +70,9 @@ pub fn page_search(cx: Scope) -> Element {
                 th { "Maturity" },
                 th { "Action" },
             }
-            match results.get() {
-                Some(items) => { items.iter().map(|i| rsx!( item_row { item: i })); },
-                None => {rsx!( tr { td { "collspan": 5, "Enter pattern" } } );}
-            }
-
+            cx.props.items.iter().map(|i| rsx!( item_row { item: i }))
         }
-    })
-}
-
-enum SearchState {
-    Unset,
-    Loading,
-    Loaded(Vec<Item>),
+    )
 }
 
 #[derive(Props)]
@@ -51,7 +87,7 @@ fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
             td { cx.props.item.pn() },
             td { cx.props.item.version().to_string() },
             td { cx.props.item.maturity().to_string() },
-            td { cx.props.item.name() },
+            td { "X" },
         }
     })
 }
