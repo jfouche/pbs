@@ -1,6 +1,8 @@
 use std::io::{self, Write};
 
-use parser::{AddChildParams, AddParams, CreateParams, StockParams, TreeParams, WhereUsedParams};
+use parser::{
+    AddChildParams, CreateParams, ImportParams, StockParams, TreeParams, WhereUsedParams,
+};
 use pbs_core::{Result, Store};
 
 use crate::parser::{get_command, Command};
@@ -40,7 +42,7 @@ impl PbsCli {
     fn handle_cmd(&mut self, cmd: Command) {
         match cmd {
             Command::Create(params) => self.handle_create(params),
-            Command::Add(params) => self.handle_add(params),
+            Command::Import(params) => self.handle_add(params),
             Command::List => self.handle_list(),
             Command::AddChild(params) => self.handle_add_child(params),
             Command::Tree(params) => self.handle_tree(params),
@@ -57,7 +59,7 @@ impl PbsCli {
         }
     }
 
-    fn handle_add(&mut self, params: AddParams) {
+    fn handle_add(&mut self, params: ImportParams) {
         match self.store.import_item(&params.pn, &params.name) {
             Ok(item) => println!("  added {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
@@ -65,7 +67,7 @@ impl PbsCli {
     }
 
     fn handle_list(&self) {
-        match self.store.get_items() {
+        match self.store.items() {
             Ok(items) => {
                 for item in items {
                     println!("  - {item}");

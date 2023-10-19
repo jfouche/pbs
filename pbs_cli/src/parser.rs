@@ -12,7 +12,7 @@ use nom::{
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Command {
     Create(CreateParams),
-    Add(AddParams),
+    Import(ImportParams),
     AddChild(AddChildParams),
     List,
     Tree(TreeParams),
@@ -77,23 +77,23 @@ impl ParamsCmd for CreateParams {
 /// Params for the `add` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct AddParams {
+pub struct ImportParams {
     pub pn: String,
     pub name: String,
 }
 
-impl From<(&str, &str)> for AddParams {
+impl From<(&str, &str)> for ImportParams {
     fn from(value: (&str, &str)) -> Self {
-        AddParams {
+        ImportParams {
             pn: value.0.to_string(),
             name: value.1.to_string(),
         }
     }
 }
 
-impl ParamsCmd for AddParams {
+impl ParamsCmd for ImportParams {
     fn cmd(self) -> Command {
-        Command::Add(self)
+        Command::Import(self)
     }
 }
 
@@ -249,9 +249,9 @@ fn cmd_create(input: &str) -> IResult<&str, Command> {
 }
 
 /// `add <pn> <name>`
-fn cmd_add(input: &str) -> IResult<&str, Command> {
+fn import_add(input: &str) -> IResult<&str, Command> {
     let params = pair(param(pn), param(name));
-    cmd("add", params)(input).cmd_n::<AddParams>()
+    cmd("import", params)(input).cmd_n::<ImportParams>()
 }
 
 /// `list`
@@ -299,7 +299,7 @@ pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&s
         space0,
         alt((
             cmd_create,
-            cmd_add,
+            import_add,
             cmd_list,
             cmd_add_child,
             cmd_tree,
@@ -366,7 +366,7 @@ mod tests {
     fn test_add_ok() {
         let cmd = get_command("\t add \t PN \t   NAME  ").unwrap();
         assert_eq!(
-            Command::Add(AddParams {
+            Command::Import(ImportParams {
                 pn: "PN".to_string(),
                 name: "NAME".to_string()
             }),

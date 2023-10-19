@@ -4,9 +4,9 @@ use crate::{database::Database, Error, Item, Result};
 
 pub fn simple_8digits_pn_provider(db: &mut Database) -> Result<String> {
     const KEY: &str = "simple_pn_provider";
-    let last_pn = db.get_config(KEY)?.parse::<usize>().unwrap_or(0);
+    let last_pn = db.read_config(KEY)?.parse::<usize>().unwrap_or(0);
     let new_pn = format!("{:08}", last_pn + 1);
-    db.set_config(KEY, &new_pn)?;
+    db.write_config(KEY, &new_pn)?;
     Ok(new_pn)
 }
 
@@ -30,7 +30,7 @@ impl Store {
         self.db
             .read()
             .map_err(|_| Error::PoisonousDatabaseLock)?
-            .get_config(key)
+            .read_config(key)
     }
 
     /// Set a config value in the database
@@ -38,7 +38,7 @@ impl Store {
         self.db
             .write()
             .map_err(|_| Error::PoisonousDatabaseLock)?
-            .set_config(key, value)
+            .write_config(key, value)
     }
 
     /// Create a new item, allocating a new PN
@@ -65,14 +65,15 @@ impl Store {
     }
 
     /// Get all items
-    pub fn get_items(&self) -> Result<Vec<Item>> {
+    pub fn items(&self) -> Result<Vec<Item>> {
         self.db
             .read()
             .map_err(|_| Error::PoisonousDatabaseLock)?
-            .get_items()
+            .items()
     }
 
     /// Add a child to an item
+    #[deprecated]
     pub fn add_child(&mut self, parent_pn: &str, child_pn: &str, quantity: usize) -> Result<()> {
         let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
         let parent_item = db.get_item_by_pn(parent_pn)?;
@@ -81,10 +82,11 @@ impl Store {
     }
 
     /// Get all items children
+    #[deprecated]
     pub fn get_children(&self, pn: &str) -> Result<Vec<(Item, usize)>> {
         let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
         let item = db.get_item_by_pn(pn)?;
-        db.get_children(&item)
+        db.children(&item)
     }
 
     /// Get all parent items using the given item
@@ -113,19 +115,19 @@ impl Store {
     }
 
     /// Get all items children
-    pub fn get_children_by_id(&self, id: usize) -> Result<Vec<(Item, usize)>> {
+    pub fn children_by_id(&self, id: usize) -> Result<Vec<(Item, usize)>> {
         self.db
             .read()
             .map_err(|_| Error::PoisonousDatabaseLock)?
-            .get_children_by_parent_id(id)
+            .children_by_parent_id(id)
     }
 
     /// Get an item by it's id
-    pub fn get_item_by_id(&self, id: usize) -> Result<Item> {
+    pub fn item_by_id(&self, id: usize) -> Result<Item> {
         self.db
             .read()
             .map_err(|_| Error::PoisonousDatabaseLock)?
-            .get_item_by_id(id)
+            .item_by_id(id)
     }
 
     /// Add a child to an item

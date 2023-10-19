@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 pub struct Database(Connection);
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ItemMaturity {
     InProgress = 0,
     Released = 1,
@@ -41,9 +41,9 @@ impl ToSql for ItemMaturity {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Item {
-    _id: usize,
+    id: usize,
     pn: String,
     name: String,
     maturity: ItemMaturity,
@@ -52,7 +52,7 @@ pub struct Item {
 
 impl Item {
     pub fn id(&self) -> usize {
-        self._id
+        self.id
     }
 
     pub fn pn(&self) -> &str {
@@ -76,18 +76,19 @@ impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[{pn}-{version:03}] \"{name}\" - {maturity}",
-            pn = self.pn(),
-            name = self.name(),
-            version = self.version(),
-            maturity = self.maturity()
+            "{id} : [{pn}-{version:03}] - \"{name}\" - {maturity}",
+            id = self.id,
+            pn = self.pn,
+            name = self.name,
+            version = self.version,
+            maturity = self.maturity
         )
     }
 }
 
 impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
-        self._id == other._id
+        self.id == other.id
     }
 }
 
@@ -95,7 +96,7 @@ impl Eq for Item {}
 
 impl Hash for Item {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self._id.hash(state);
+        self.id.hash(state);
     }
 }
 
@@ -103,7 +104,7 @@ impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
     type Error = rusqlite::Error;
     fn try_from(value: &rusqlite::Row) -> std::result::Result<Self, Self::Error> {
         Ok(Item {
-            _id: value.get("id")?,
+            id: value.get("id")?,
             pn: value.get("pn")?,
             name: value.get("name")?,
             version: value.get("version")?,
@@ -133,7 +134,7 @@ impl Database {
     }
 
     // Get a config value from database
-    pub fn get_config(&self, key: &str) -> Result<String> {
+    pub fn read_config(&self, key: &str) -> Result<String> {
         let mut stmt = self
             .0
             .prepare("SELECT value FROM config WHERE key = ?1")
@@ -147,7 +148,7 @@ impl Database {
     }
 
     // Set a config value in database
-    pub fn set_config(&self, key: &str, value: &str) -> Result<()> {
+    pub fn write_config(&self, key: &str, value: &str) -> Result<()> {
         let mut stmt = self
             .0
             .prepare("REPLACE into config(key, value) VALUES(?1, ?2)")
@@ -167,11 +168,11 @@ impl Database {
             )
             .convert()?;
         let id = self.0.last_insert_rowid();
-        self.get_item_by_id(id as usize)
+        self.item_by_id(id as usize)
     }
 
     /// Retrive all [Item]s
-    pub(crate) fn get_items(&self) -> Result<Vec<Item>> {
+    pub(crate) fn items(&self) -> Result<Vec<Item>> {
         let mut stmt = self.0.prepare("SELECT * FROM items").convert()?;
         let items = stmt
             .query_map([], |row| Item::try_from(row))
@@ -187,7 +188,7 @@ impl Database {
             .0
             .execute(
                 "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
-                (&item.pn(), &item.name(), item._id),
+                (&item.pn, &item.name, item.id),
             )
             .convert()?
             != 1
@@ -201,6 +202,7 @@ impl Database {
     ///
     /// WARNING : this function returns the 1st result (but there
     /// should be only 1 result)
+    #[deprecated]
     pub fn get_item_by_pn(&self, pn: &str) -> Result<Item> {
         let mut stmt = self
             .0
@@ -213,7 +215,7 @@ impl Database {
     ///
     /// WARNING : this function returns the 1st result (but there
     /// should be only 1 result)
-    pub fn get_item_by_id(&self, id: usize) -> Result<Item> {
+    pub fn item_by_id(&self, id: usize) -> Result<Item> {
         let mut stmt = self
             .0
             .prepare("SELECT * FROM items WHERE id = ?1")
@@ -243,7 +245,7 @@ impl Database {
     }
 
     /// Get children of an item
-    pub(crate) fn get_children_by_parent_id(&self, parent_id: usize) -> Result<Vec<(Item, usize)>> {
+    pub(crate) fn children_by_parent_id(&self, parent_id: usize) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self
             .0
             .prepare("SELECT * FROM view_children WHERE id_parent = ?1")
@@ -261,8 +263,8 @@ impl Database {
     }
 
     /// Get children of an item
-    pub(crate) fn get_children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
-        self.get_children_by_parent_id(parent.id())
+    pub(crate) fn children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
+        self.children_by_parent_id(parent.id())
     }
 
     ///
@@ -272,7 +274,7 @@ impl Database {
             .prepare("SELECT * FROM view_where_used WHERE id_child = ?1")
             .convert()?;
         let items = stmt
-            .query_map([item._id], |row| Item::try_from(row))
+            .query_map([item.id], |row| Item::try_from(row))
             .convert()?
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
@@ -307,7 +309,7 @@ mod test {
     fn add_items() {
         let db = Database::open(":memory:").unwrap();
         assert!(db.insert_item("PN1", "NAME1").is_ok());
-        let items = db.get_items();
+        let items = db.items();
         assert!(items.is_ok());
         let items = items.unwrap();
         assert_eq!(1, items.len());
@@ -319,13 +321,13 @@ mod test {
         let item1 = db.insert_item("1", "PARENT").unwrap();
         let item2 = db.insert_item("11", "CHILD1").unwrap();
         let item3 = db.insert_item("12", "CHILD2").unwrap();
-        db.add_child(item1._id, item2._id, 1).unwrap();
-        db.add_child(item1._id, item3._id, 2).unwrap();
-        let children = db.get_children(&item1).unwrap();
+        db.add_child(item1.id, item2.id, 1).unwrap();
+        db.add_child(item1.id, item3.id, 2).unwrap();
+        let children = db.children(&item1).unwrap();
         assert_eq!(2, children.len());
 
         // can't add an already existing child
-        assert!(db.add_child(item1._id, item3._id, 2).is_err());
+        assert!(db.add_child(item1.id, item3.id, 2).is_err());
     }
 
     #[test]
@@ -338,11 +340,11 @@ mod test {
     #[test]
     fn config() {
         let db = Database::open(":memory:").unwrap();
-        assert_eq!("".to_string(), db.get_config("key").unwrap());
-        assert!(db.set_config("key", "value").is_ok());
-        assert_eq!("value".to_string(), db.get_config("key").unwrap());
-        let _ = db.set_config("key", "value 2");
-        assert_eq!("value 2", db.get_config("key").unwrap());
+        assert_eq!("".to_string(), db.read_config("key").unwrap());
+        assert!(db.write_config("key", "value").is_ok());
+        assert_eq!("value".to_string(), db.read_config("key").unwrap());
+        let _ = db.write_config("key", "value 2");
+        assert_eq!("value 2", db.read_config("key").unwrap());
     }
 
     #[test]

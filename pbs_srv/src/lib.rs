@@ -90,7 +90,7 @@ async fn get_item(State(state): State<AppState>, Path(id): Path<usize>) -> Resul
     info!("get_item({id})");
     let item = state
         .store()?
-        .get_item_by_id(id)
+        .item_by_id(id)
         .map_err(|_e| Error::StoreError)?;
     Ok(Json(item))
 }
