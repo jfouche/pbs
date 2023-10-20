@@ -9,6 +9,13 @@ use serde::{Deserialize, Serialize};
 
 pub struct Database(Connection);
 
+impl std::ops::Deref for Database {
+    type Target = Connection;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum ItemMaturity {
     InProgress = 0,
@@ -135,7 +142,6 @@ impl Database {
     // Get a config value from database
     pub fn get_config(&self, key: &str) -> Result<String> {
         let mut stmt = self
-            .0
             .prepare("SELECT value FROM config WHERE key = ?1")
             .convert()?;
         match stmt.query_row([key], |row| row.get("value")) {
@@ -149,7 +155,6 @@ impl Database {
     // Set a config value in database
     pub fn set_config(&self, key: &str, value: &str) -> Result<()> {
         let mut stmt = self
-            .0
             .prepare("REPLACE into config(key, value) VALUES(?1, ?2)")
             .convert()?;
         stmt.execute((key, value)).map(|_| ()).convert()
@@ -160,19 +165,18 @@ impl Database {
         const DEFAULT_VERSION: usize = 1;
         const DEFAULT_MATURITY: ItemMaturity = ItemMaturity::InProgress;
 
-        self.0
-            .execute(
-                "INSERT INTO items(pn, name, version, maturity) VALUES(?1, ?2, ?3, ?4)",
-                (pn, name, DEFAULT_VERSION, DEFAULT_MATURITY),
-            )
-            .convert()?;
-        let id = self.0.last_insert_rowid();
+        self.execute(
+            "INSERT INTO items(pn, name, version, maturity) VALUES(?1, ?2, ?3, ?4)",
+            (pn, name, DEFAULT_VERSION, DEFAULT_MATURITY),
+        )
+        .convert()?;
+        let id = self.last_insert_rowid();
         self.get_item_by_id(id as usize)
     }
 
     /// Retrive all [Item]s
     pub(crate) fn get_items(&self) -> Result<Vec<Item>> {
-        let mut stmt = self.0.prepare("SELECT * FROM items").convert()?;
+        let mut stmt = self.prepare("SELECT * FROM items").convert()?;
         let items = stmt
             .query_map([], |row| Item::try_from(row))
             .convert()?
@@ -184,7 +188,6 @@ impl Database {
     /// Update the item
     pub(crate) fn update_item(&mut self, item: Item) -> Result<()> {
         if self
-            .0
             .execute(
                 "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
                 (&item.pn(), &item.name(), item._id),
@@ -203,7 +206,6 @@ impl Database {
     /// should be only 1 result)
     pub fn get_item_by_pn(&self, pn: &str) -> Result<Item> {
         let mut stmt = self
-            .0
             .prepare("SELECT * FROM items WHERE pn = ?1")
             .convert()?;
         stmt.query_row([pn], |row| Item::try_from(row)).convert()
@@ -215,7 +217,6 @@ impl Database {
     /// should be only 1 result)
     pub fn get_item_by_id(&self, id: usize) -> Result<Item> {
         let mut stmt = self
-            .0
             .prepare("SELECT * FROM items WHERE id = ?1")
             .convert()?;
         stmt.query_row([id], |row| Item::try_from(row)).convert()
@@ -229,7 +230,6 @@ impl Database {
         quantity: usize,
     ) -> Result<()> {
         if self
-            .0
             .execute(
                 "INSERT INTO children (id_parent, id_child, quantity) VALUES(?1, ?2, ?3)",
                 (parent_id, child_id, quantity),
@@ -245,7 +245,6 @@ impl Database {
     /// Get children of an item
     pub(crate) fn get_children_by_parent_id(&self, parent_id: usize) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self
-            .0
             .prepare("SELECT * FROM view_children WHERE id_parent = ?1")
             .convert()?;
         let items = stmt
@@ -268,7 +267,6 @@ impl Database {
     ///
     pub(crate) fn where_used(&self, item: &Item) -> Result<Vec<Item>> {
         let mut stmt = self
-            .0
             .prepare("SELECT * FROM view_where_used WHERE id_child = ?1")
             .convert()?;
         let items = stmt
@@ -282,7 +280,6 @@ impl Database {
     /// Search for items match pn or name columns
     pub fn search(&self, pattern: &str) -> Result<Vec<Item>> {
         let mut stmt = self
-            .0
             .prepare("SELECT * FROM items WHERE pn LIKE ?1 or name LIKE ?1 ORDER BY pn")
             .convert()?;
         let items = stmt
