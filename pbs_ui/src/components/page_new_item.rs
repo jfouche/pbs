@@ -35,6 +35,7 @@ fn new_item(cx: Scope) -> Element {
                 input {
                     name: "name",
                     value: "{name}",
+                    onmounted: move |evt| {evt.data.set_focus(true);},
                     oninput: move |evt| name.set(evt.value.clone()),
                 },
                 br {},

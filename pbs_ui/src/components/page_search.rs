@@ -36,6 +36,7 @@ pub fn page_search(cx: Scope) -> Element {
                     search_handler.send(pattern);
                 }
             },
+            onmounted: move |evt| {evt.data.set_focus(true);},
         }
 
         match results.get() {
@@ -73,13 +74,17 @@ struct ItemRowProps<'a> {
 }
 
 fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
-    cx.render(rsx! {
+    render!(
         tr {
             td { cx.props.item.name() },
             td { cx.props.item.pn() },
             td { cx.props.item.version().to_string() },
             td { cx.props.item.maturity().to_string() },
-            td { "X" },
+            td {
+                a {
+                "View"
+                },
+            }
         }
-    })
+    )
 }
