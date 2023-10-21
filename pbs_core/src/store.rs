@@ -26,7 +26,7 @@ impl Store {
     }
 
     /// Get a config value from the database
-    pub fn get_config(&self, key: &str) -> Result<String> {
+    pub fn read_config(&self, key: &str) -> Result<String> {
         self.db
             .read()
             .map_err(|_| Error::PoisonousDatabaseLock)?
@@ -34,7 +34,7 @@ impl Store {
     }
 
     /// Set a config value in the database
-    pub fn set_config(&mut self, key: &str, value: &str) -> Result<()> {
+    pub fn write_config(&mut self, key: &str, value: &str) -> Result<()> {
         self.db
             .write()
             .map_err(|_| Error::PoisonousDatabaseLock)?

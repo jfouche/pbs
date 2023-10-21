@@ -42,7 +42,7 @@ impl PbsCli {
     fn handle_cmd(&mut self, cmd: Command) {
         match cmd {
             Command::Create(params) => self.handle_create(params),
-            Command::Import(params) => self.handle_add(params),
+            Command::Import(params) => self.handle_import(params),
             Command::List => self.handle_list(),
             Command::AddChild(params) => self.handle_add_child(params),
             Command::Tree(params) => self.handle_tree(params),
@@ -59,7 +59,7 @@ impl PbsCli {
         }
     }
 
-    fn handle_add(&mut self, params: ImportParams) {
+    fn handle_import(&mut self, params: ImportParams) {
         match self.store.import_item(&params.pn, &params.name) {
             Ok(item) => println!("  added {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
