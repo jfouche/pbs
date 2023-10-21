@@ -73,34 +73,28 @@ impl Store {
     }
 
     /// Add a child to an item
-    #[deprecated]
-    pub fn add_child(&mut self, parent_pn: &str, child_pn: &str, quantity: usize) -> Result<()> {
+    pub fn add_child(&mut self, parent_id: i64, child_id: i64, quantity: usize) -> Result<()> {
         let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
-        let parent_item = db.get_item_by_pn(parent_pn)?;
-        let child_item = db.get_item_by_pn(child_pn)?;
-        db.add_child(parent_item.id(), child_item.id(), quantity)
+        db.add_child(parent_id, child_id, quantity)
     }
 
     /// Get all items children
-    #[deprecated]
-    pub fn get_children(&self, pn: &str) -> Result<Vec<(Item, usize)>> {
+    pub fn children(&self, id: i64) -> Result<Vec<(Item, usize)>> {
         let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
-        let item = db.get_item_by_pn(pn)?;
-        db.children(&item)
+        db.children(id)
     }
 
     /// Get all parent items using the given item
-    pub fn where_used(&self, pn: &str) -> Result<Vec<Item>> {
+    pub fn where_used(&self, id: i64) -> Result<Vec<Item>> {
         let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
-        let item = db.get_item_by_pn(pn)?;
-        db.where_used(&item)
+        db.where_used(id)
     }
 
     /// Get all items and quantity that compose the given item
-    pub fn get_stock(&self, pn: &str) -> Result<HashMap<Item, usize>> {
+    pub fn stock(&self, id: i64) -> Result<HashMap<Item, usize>> {
         let mut stock = HashMap::new();
-        for (child, quantity) in self.get_children(pn)? {
-            stock.extend(self.get_stock(child.pn())?);
+        for (child, quantity) in self.children(id)? {
+            stock.extend(self.stock(child.id())?);
             *stock.entry(child).or_insert(0) += quantity;
         }
         Ok(stock)
@@ -114,16 +108,8 @@ impl Store {
             .search(pattern)
     }
 
-    /// Get all items children
-    pub fn children_by_id(&self, id: usize) -> Result<Vec<(Item, usize)>> {
-        self.db
-            .read()
-            .map_err(|_| Error::PoisonousDatabaseLock)?
-            .children_by_parent_id(id)
-    }
-
     /// Get an item by it's id
-    pub fn item_by_id(&self, id: usize) -> Result<Item> {
+    pub fn item(&self, id: usize) -> Result<Item> {
         self.db
             .read()
             .map_err(|_| Error::PoisonousDatabaseLock)?
@@ -133,8 +119,8 @@ impl Store {
     /// Add a child to an item
     pub fn add_child_by_id(
         &mut self,
-        parent_id: usize,
-        child_id: usize,
+        parent_id: i64,
+        child_id: i64,
         quantity: usize,
     ) -> Result<()> {
         let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;

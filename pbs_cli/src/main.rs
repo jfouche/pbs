@@ -80,14 +80,14 @@ impl PbsCli {
     fn handle_add_child(&mut self, params: AddChildParams) {
         if let Err(e) = self
             .store
-            .add_child(&params.parent_pn, &params.child_pn, params.quantity)
+            .add_child(params.parent_id, params.child_id, params.quantity)
         {
             eprintln!("ERROR: {:?}", e);
         }
     }
 
     fn handle_tree(&self, params: TreeParams) {
-        match self.store.get_children(&params.pn) {
+        match self.store.children(params.id) {
             Ok(children) => {
                 for (item, quantity) in children {
                     println!("  - {item} : {quantity}");
@@ -97,7 +97,7 @@ impl PbsCli {
         }
     }
     fn handle_where_used(&self, params: WhereUsedParams) {
-        match self.store.where_used(&params.pn) {
+        match self.store.where_used(params.id) {
             Ok(parents) => {
                 for item in parents {
                     println!("  - {item}");
@@ -108,7 +108,7 @@ impl PbsCli {
     }
 
     fn handle_stock(&self, params: StockParams) {
-        match self.store.get_stock(&params.pn) {
+        match self.store.stock(params.id) {
             Ok(items) => {
                 for (item, quantity) in items {
                     println!("  - {item} : {quantity}");

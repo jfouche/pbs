@@ -33,6 +33,12 @@ Import an item to the store where :
 - `<pn>` is the part number of the item (its reference)
 - `<name>` is a name or label of the item  
 
+## Add a child to an item :  `add-child <id_parent> <id_child> <quantity>`
+Add a child to an item where :
+- `<id_parent>`
+- `<id_child>`   
+- `<quantity>` how many child item to add in the parent item  
+
 # Example
 
 ```

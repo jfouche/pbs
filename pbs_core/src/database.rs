@@ -50,7 +50,7 @@ impl ToSql for ItemMaturity {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Item {
-    id: usize,
+    id: i64,
     pn: String,
     name: String,
     maturity: ItemMaturity,
@@ -58,7 +58,7 @@ pub struct Item {
 }
 
 impl Item {
-    pub fn id(&self) -> usize {
+    pub fn id(&self) -> i64 {
         self.id
     }
 
@@ -227,8 +227,8 @@ impl Database {
     /// Add a child to an item
     pub(crate) fn add_child(
         &mut self,
-        parent_id: usize,
-        child_id: usize,
+        parent_id: i64,
+        child_id: i64,
         quantity: usize,
     ) -> Result<()> {
         if self
@@ -245,7 +245,7 @@ impl Database {
     }
 
     /// Get children of an item
-    pub(crate) fn children_by_parent_id(&self, parent_id: usize) -> Result<Vec<(Item, usize)>> {
+    pub(crate) fn children(&self, parent_id: i64) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self
             .prepare("SELECT * FROM view_children WHERE id_parent = ?1")
             .convert()?;
@@ -261,18 +261,13 @@ impl Database {
         Ok(items)
     }
 
-    /// Get children of an item
-    pub(crate) fn children(&self, parent: &Item) -> Result<Vec<(Item, usize)>> {
-        self.children_by_parent_id(parent.id())
-    }
-
     ///
-    pub(crate) fn where_used(&self, item: &Item) -> Result<Vec<Item>> {
+    pub(crate) fn where_used(&self, id: i64) -> Result<Vec<Item>> {
         let mut stmt = self
             .prepare("SELECT * FROM view_where_used WHERE id_child = ?1")
             .convert()?;
         let items = stmt
-            .query_map([item.id], |row| Item::try_from(row))
+            .query_map([id], |row| Item::try_from(row))
             .convert()?
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
@@ -320,7 +315,7 @@ mod test {
         let item3 = db.insert_item("12", "CHILD2").unwrap();
         db.add_child(item1.id, item2.id, 1).unwrap();
         db.add_child(item1.id, item3.id, 2).unwrap();
-        let children = db.children(&item1).unwrap();
+        let children = db.children(item1.id).unwrap();
         assert_eq!(2, children.len());
 
         // can't add an already existing child

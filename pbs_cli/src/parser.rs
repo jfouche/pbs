@@ -101,16 +101,16 @@ impl ParamsCmd for ImportParams {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct AddChildParams {
-    pub parent_pn: String,
-    pub child_pn: String,
+    pub parent_id: i64,
+    pub child_id: i64,
     pub quantity: usize,
 }
 
-impl From<(&str, &str, usize)> for AddChildParams {
-    fn from(value: (&str, &str, usize)) -> Self {
+impl From<(i64, i64, usize)> for AddChildParams {
+    fn from(value: (i64, i64, usize)) -> Self {
         AddChildParams {
-            parent_pn: value.0.to_string(),
-            child_pn: value.1.to_string(),
+            parent_id: value.0,
+            child_id: value.1,
             quantity: value.2,
         }
     }
@@ -126,14 +126,12 @@ impl ParamsCmd for AddChildParams {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct TreeParams {
-    pub pn: String,
+    pub id: i64,
 }
 
-impl From<&str> for TreeParams {
-    fn from(value: &str) -> Self {
-        TreeParams {
-            pn: value.to_string(),
-        }
+impl From<i64> for TreeParams {
+    fn from(value: i64) -> Self {
+        TreeParams { id: value }
     }
 }
 
@@ -147,14 +145,12 @@ impl ParamsCmd for TreeParams {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct WhereUsedParams {
-    pub pn: String,
+    pub id: i64,
 }
 
-impl From<&str> for WhereUsedParams {
-    fn from(value: &str) -> Self {
-        WhereUsedParams {
-            pn: value.to_string(),
-        }
+impl From<i64> for WhereUsedParams {
+    fn from(value: i64) -> Self {
+        WhereUsedParams { id: value }
     }
 }
 
@@ -168,14 +164,12 @@ impl ParamsCmd for WhereUsedParams {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct StockParams {
-    pub pn: String,
+    pub id: i64,
 }
 
-impl From<&str> for StockParams {
-    fn from(value: &str) -> Self {
-        StockParams {
-            pn: value.to_string(),
-        }
+impl From<i64> for StockParams {
+    fn from(value: i64) -> Self {
+        StockParams { id: value }
     }
 }
 
@@ -233,6 +227,11 @@ fn quantity(input: &str) -> IResult<&str, usize> {
     map_res(digit1, |s: &str| s.parse::<usize>())(input)
 }
 
+/// Parser for an [Item] id
+fn id(input: &str) -> IResult<&str, i64> {
+    map_res(digit1, |s: &str| s.parse::<i64>())(input)
+}
+
 /// End of line parser
 fn eol(input: &str) -> IResult<&str, ()> {
     pair(multispace0, eof)(input).map(|(i, (_, _))| (i, ()))
@@ -269,27 +268,27 @@ fn cmd_help(input: &str) -> IResult<&str, Command> {
     tag("help")(input).cmd_0(Command::Help)
 }
 
-/// `tree <pn>`
+/// `tree <id>`
 fn cmd_tree(input: &str) -> IResult<&str, Command> {
-    let params = param(pn);
+    let params = param(id);
     cmd("tree", params)(input).cmd_n::<TreeParams>()
 }
 
-/// `where-used <pn>`
+/// `where-used <id>`
 fn cmd_where_used(input: &str) -> IResult<&str, Command> {
-    let params = param(pn);
+    let params = param(id);
     cmd("where-used", params)(input).cmd_n::<WhereUsedParams>()
 }
 
-/// `add-child <parent-pn> <child-pn> <quantity>`
+/// `add-child <parent-id> <child-id> <quantity>`
 fn cmd_add_child(input: &str) -> IResult<&str, Command> {
-    let params = tuple((param(pn), param(pn), param(quantity)));
+    let params = tuple((param(id), param(id), param(quantity)));
     cmd("add-child", params)(input).cmd_n::<AddChildParams>()
 }
 
 /// `stock <pn>`
 fn cmd_stock(input: &str) -> IResult<&str, Command> {
-    let params = param(pn);
+    let params = param(id);
     preceded(tag("stock"), params)(input).cmd_n::<StockParams>()
 }
 
@@ -376,22 +375,17 @@ mod tests {
 
     #[test]
     fn test_tree_ok() {
-        let cmd = get_command("\t tree \t PN \t  ").unwrap();
-        assert_eq!(
-            Command::Tree(TreeParams {
-                pn: "PN".to_string(),
-            }),
-            cmd
-        );
+        let cmd = get_command("\t tree \t 481 \t  ").unwrap();
+        assert_eq!(Command::Tree(TreeParams { id: 481 }), cmd);
     }
 
     #[test]
     fn test_add_child() {
-        let cmd = get_command("\t add-child \t PN1 \t   PN2\t  456 \t ").unwrap();
+        let cmd = get_command("\t add-child \t 1 \t   17\t  456 \t ").unwrap();
         assert_eq!(
             Command::AddChild(AddChildParams {
-                parent_pn: "PN1".to_string(),
-                child_pn: "PN2".to_string(),
+                parent_id: 1,
+                child_id: 17,
                 quantity: 456
             }),
             cmd
