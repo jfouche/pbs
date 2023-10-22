@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS items(
     name      TEXT,
     maturity  INTEGER,
     version   INTEGER,
-    UNIQUE(pn)
+    type      INTEGER,
+    UNIQUE(pn, version)
 );
     
 CREATE TABLE IF NOT EXISTS children(
@@ -25,6 +26,7 @@ CREATE VIEW IF NOT EXISTS view_children AS
         items.name, 
         items.version,
         items.maturity,
+        items.type,
         children.quantity,
         children.id_parent
     FROM items, children 
@@ -37,6 +39,7 @@ CREATE VIEW IF NOT EXISTS view_where_used AS
         items.name,
         items.version,
         items.maturity,
+        items.type,
         children.id_child
     FROM items, children 
     WHERE children.id_parent = items.id;

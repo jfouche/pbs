@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::RwLock};
 
-use crate::{database::Database, Error, Item, Result};
+use crate::{
+    database::{Database, ItemType},
+    Error, Item, Result,
+};
 
 pub fn simple_8digits_pn_provider(db: &mut Database) -> Result<String> {
     const KEY: &str = "simple_pn_provider";
@@ -45,7 +48,7 @@ impl Store {
     pub fn create_item(&mut self, name: &str) -> Result<Item> {
         let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
         let pn = simple_8digits_pn_provider(&mut db)?;
-        db.insert_item(&pn, name)
+        db.insert_item(&pn, name, ItemType::Internal)
     }
 
     // Add a exinsting item (e.g. existing PN) to the store
@@ -53,7 +56,7 @@ impl Store {
         self.db
             .write()
             .map_err(|_| Error::PoisonousDatabaseLock)?
-            .insert_item(pn, name)
+            .insert_item(pn, name, ItemType::External)
     }
 
     /// Save the item

@@ -16,10 +16,15 @@ impl std::ops::Deref for Database {
     }
 }
 
+// ==================================================================
+// ItemMaturity
+// ==================================================================
+
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ItemMaturity {
-    InProgress = 0,
-    Released = 1,
+    InProgress,
+    Released,
+    Obsolete,
 }
 
 impl std::fmt::Display for ItemMaturity {
@@ -27,16 +32,22 @@ impl std::fmt::Display for ItemMaturity {
         let maturity = match self {
             ItemMaturity::InProgress => "In progress...",
             ItemMaturity::Released => "Released",
+            ItemMaturity::Obsolete => "Obsolete",
         };
         write!(f, "{maturity}")
     }
 }
 
+const DB_MATURITY_IN_PROGRESS: i64 = 0;
+const DB_MATURITY_RELEASED: i64 = 1;
+const DB_MATURITY_OBSOLETE: i64 = 2;
+
 impl FromSql for ItemMaturity {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value.as_i64()? {
-            x if x == ItemMaturity::InProgress as i64 => Ok(ItemMaturity::InProgress),
-            x if x == ItemMaturity::Released as i64 => Ok(ItemMaturity::Released),
+            DB_MATURITY_IN_PROGRESS => Ok(ItemMaturity::InProgress),
+            DB_MATURITY_RELEASED => Ok(ItemMaturity::Released),
+            DB_MATURITY_OBSOLETE => Ok(ItemMaturity::Obsolete),
             _ => todo!("DB : Manage the maturity conversion"),
         }
     }
@@ -44,17 +55,70 @@ impl FromSql for ItemMaturity {
 
 impl ToSql for ItemMaturity {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        Ok(ToSqlOutput::Owned(Value::Integer(*self as i64)))
+        let value = match self {
+            ItemMaturity::InProgress => DB_MATURITY_IN_PROGRESS,
+            ItemMaturity::Released => DB_MATURITY_RELEASED,
+            ItemMaturity::Obsolete => DB_MATURITY_OBSOLETE,
+        };
+        Ok(ToSqlOutput::Owned(Value::Integer(value)))
     }
 }
+
+// ==================================================================
+// ItemType
+// ==================================================================
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub enum ItemType {
+    Internal,
+    External,
+}
+
+impl std::fmt::Display for ItemType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let maturity = match self {
+            ItemType::Internal => "Internal",
+            ItemType::External => "External",
+        };
+        write!(f, "{maturity}")
+    }
+}
+
+const DB_ITEM_INTERNAL: i64 = 0;
+const DB_ITEM_EXTERNAL: i64 = 1;
+
+impl FromSql for ItemType {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value.as_i64()? {
+            DB_ITEM_INTERNAL => Ok(ItemType::Internal),
+            DB_ITEM_EXTERNAL => Ok(ItemType::External),
+            _ => todo!("DB : Manage the item type conversion"),
+        }
+    }
+}
+
+impl ToSql for ItemType {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        let value = match self {
+            ItemType::Internal => DB_ITEM_INTERNAL,
+            ItemType::External => DB_ITEM_EXTERNAL,
+        };
+        Ok(ToSqlOutput::Owned(Value::Integer(value)))
+    }
+}
+
+// ==================================================================
+// Item
+// ==================================================================
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Item {
     id: i64,
     pn: String,
+    version: usize,
     name: String,
     maturity: ItemMaturity,
-    version: usize,
+    item_type: ItemType,
 }
 
 impl Item {
@@ -116,6 +180,7 @@ impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
             name: value.get("name")?,
             version: value.get("version")?,
             maturity: value.get("maturity")?,
+            item_type: value.get("type")?,
         })
     }
 }
@@ -162,13 +227,19 @@ impl Database {
     }
 
     // Add a new item to the store
-    pub(crate) fn insert_item(&self, pn: &str, name: &str) -> Result<Item> {
+    pub(crate) fn insert_item(&self, pn: &str, name: &str, t: ItemType) -> Result<Item> {
         const DEFAULT_VERSION: usize = 1;
-        const DEFAULT_MATURITY: ItemMaturity = ItemMaturity::InProgress;
+        const DEFAULT_INTERNAL_MATURITY: ItemMaturity = ItemMaturity::InProgress;
+        const DEFAULT_EXTERNAL_MATURITY: ItemMaturity = ItemMaturity::Released;
+
+        let maturity = match t {
+            ItemType::Internal => DEFAULT_INTERNAL_MATURITY,
+            ItemType::External => DEFAULT_EXTERNAL_MATURITY,
+        };
 
         self.execute(
-            "INSERT INTO items(pn, name, version, maturity) VALUES(?1, ?2, ?3, ?4)",
-            (pn, name, DEFAULT_VERSION, DEFAULT_MATURITY),
+            "INSERT INTO items(pn, name, version, maturity, type) VALUES(?1, ?2, ?3, ?4, ?5)",
+            (pn, name, DEFAULT_VERSION, maturity, t),
         )
         .convert()?;
         let id = self.last_insert_rowid();
@@ -300,7 +371,7 @@ mod test {
     #[test]
     fn add_items() {
         let db = Database::open(":memory:").unwrap();
-        assert!(db.insert_item("PN1", "NAME1").is_ok());
+        assert!(db.insert_item("PN1", "NAME1", ItemType::Internal).is_ok());
         let items = db.items();
         assert!(items.is_ok());
         let items = items.unwrap();
@@ -310,9 +381,9 @@ mod test {
     #[test]
     fn add_childrens() {
         let mut db = Database::open(":memory:").unwrap();
-        let item1 = db.insert_item("1", "PARENT").unwrap();
-        let item2 = db.insert_item("11", "CHILD1").unwrap();
-        let item3 = db.insert_item("12", "CHILD2").unwrap();
+        let item1 = db.insert_item("1", "PARENT", ItemType::Internal).unwrap();
+        let item2 = db.insert_item("11", "CHILD1", ItemType::Internal).unwrap();
+        let item3 = db.insert_item("12", "CHILD2", ItemType::Internal).unwrap();
         db.add_child(item1.id, item2.id, 1).unwrap();
         db.add_child(item1.id, item3.id, 2).unwrap();
         let children = db.children(item1.id).unwrap();
@@ -325,8 +396,8 @@ mod test {
     #[test]
     fn add_same_pn() {
         let db = Database::open(":memory:").unwrap();
-        let _ = db.insert_item("PN", "ITEM").unwrap();
-        assert!(db.insert_item("PN", "ANOTHER").is_err());
+        let _ = db.insert_item("PN", "ITEM", ItemType::Internal).unwrap();
+        assert!(db.insert_item("PN", "ANOTHER", ItemType::Internal).is_err());
     }
 
     #[test]
@@ -342,12 +413,18 @@ mod test {
     #[test]
     fn search() {
         let db = Database::open(":memory:").unwrap();
-        db.insert_item("00000001", "FIRST ITEM").unwrap();
-        db.insert_item("00000002", "SECOND ITEM").unwrap();
-        db.insert_item("00000003", "THIRD THING").unwrap();
-        db.insert_item("123.456", "EXTERNAL THING").unwrap();
-        db.insert_item("123.003", "OTHER EXTERNAL THING").unwrap();
-        db.insert_item("123.678", "THING 1003").unwrap();
+        db.insert_item("00000001", "FIRST ITEM", ItemType::Internal)
+            .unwrap();
+        db.insert_item("00000002", "SECOND ITEM", ItemType::Internal)
+            .unwrap();
+        db.insert_item("00000003", "THIRD THING", ItemType::Internal)
+            .unwrap();
+        db.insert_item("123.456", "EXTERNAL THING", ItemType::Internal)
+            .unwrap();
+        db.insert_item("123.003", "OTHER EXTERNAL THING", ItemType::Internal)
+            .unwrap();
+        db.insert_item("123.678", "THING 1003", ItemType::Internal)
+            .unwrap();
 
         let items = db.search("%000%").unwrap();
         assert_eq!(3, items.len());
