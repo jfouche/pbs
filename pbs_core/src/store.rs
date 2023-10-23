@@ -1,7 +1,10 @@
-use std::{collections::HashMap, sync::RwLock};
+use std::{
+    collections::HashMap,
+    sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
+};
 
 use crate::{
-    database::{Database, ItemType},
+    database::{Database, ItemMaturity, ItemType},
     Error, Item, Result,
 };
 
@@ -28,35 +31,36 @@ impl Store {
         })
     }
 
+    fn db_read(&self) -> Result<RwLockReadGuard<'_, Database>> {
+        let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
+        Ok(db)
+    }
+
+    fn db_write(&mut self) -> Result<RwLockWriteGuard<'_, Database>> {
+        let db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
+        Ok(db)
+    }
+
     /// Get a config value from the database
     pub fn read_config(&self, key: &str) -> Result<String> {
-        self.db
-            .read()
-            .map_err(|_| Error::PoisonousDatabaseLock)?
-            .read_config(key)
+        self.db_read()?.read_config(key)
     }
 
     /// Set a config value in the database
     pub fn write_config(&mut self, key: &str, value: &str) -> Result<()> {
-        self.db
-            .write()
-            .map_err(|_| Error::PoisonousDatabaseLock)?
-            .write_config(key, value)
+        self.db_write()?.write_config(key, value)
     }
 
     /// Create a new item, allocating a new PN
     pub fn create_item(&mut self, name: &str) -> Result<Item> {
-        let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
+        let mut db = self.db_write()?;
         let pn = simple_8digits_pn_provider(&mut db)?;
         db.insert_item(&pn, name, ItemType::Internal)
     }
 
     // Add a exinsting item (e.g. existing PN) to the store
     pub fn import_item(&mut self, pn: &str, name: &str) -> Result<Item> {
-        self.db
-            .write()
-            .map_err(|_| Error::PoisonousDatabaseLock)?
-            .insert_item(pn, name, ItemType::External)
+        self.db_write()?.insert_item(pn, name, ItemType::External)
     }
 
     /// Save the item
@@ -83,14 +87,12 @@ impl Store {
 
     /// Get all items children
     pub fn children(&self, id: i64) -> Result<Vec<(Item, usize)>> {
-        let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
-        db.children(id)
+        self.db_read()?.children(id)
     }
 
     /// Get all parent items using the given item
     pub fn where_used(&self, id: i64) -> Result<Vec<Item>> {
-        let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
-        db.where_used(id)
+        self.db_read()?.where_used(id)
     }
 
     /// Get all items and quantity that compose the given item
@@ -105,28 +107,75 @@ impl Store {
 
     /// Search for items matching pattern (pn or name)
     pub fn search_items(&self, pattern: &str) -> Result<Vec<Item>> {
-        self.db
-            .read()
-            .map_err(|_| Error::PoisonousDatabaseLock)?
-            .search(pattern)
+        self.db_read()?.search(pattern)
     }
 
     /// Get an item by it's id
-    pub fn item(&self, id: usize) -> Result<Item> {
-        self.db
-            .read()
-            .map_err(|_| Error::PoisonousDatabaseLock)?
-            .item_by_id(id)
+    pub fn item(&self, id: i64) -> Result<Item> {
+        self.db_read()?.item_by_id(id)
     }
 
-    /// Add a child to an item
-    pub fn add_child_by_id(
-        &mut self,
-        parent_id: i64,
-        child_id: i64,
-        quantity: usize,
-    ) -> Result<()> {
-        let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
-        db.add_child(parent_id, child_id, quantity)
+    /// Release an "in progress" Item
+    pub fn release(&mut self, id: i64) -> Result<Item> {
+        let item = self.db_read()?.item_by_id(id)?;
+        if item.itype() != ItemType::Internal || item.maturity() != ItemMaturity::InProgress {
+            Err(Error::CantReleaseItem)
+        } else if self.can_release(id)? {
+            let item = self.db_write()?.release(id)?;
+            Ok(item)
+        } else {
+            Err(Error::CantReleaseItem)
+        }
+    }
+
+    /// Return true if all children are [ItemMaturity::Released]
+    fn can_release(&self, id: i64) -> Result<bool> {
+        for child in self.db_read()?.children(id)? {
+            if child.0.maturity() != ItemMaturity::Released {
+                return Ok(false);
+            }
+            if !self.can_release(child.0.id())? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{Error, Store};
+
+    #[test]
+    fn release() {
+        let mut store = Store::open(":memory:").expect("can(t open store");
+        let parent = store.create_item("PARENT").unwrap();
+        let item1 = store.create_item("ITEM1").unwrap();
+        let item2 = store.create_item("ITEM2").unwrap();
+        let cots1 = store.import_item("EXT.001", "COTS1").unwrap();
+        let cots2 = store.import_item("EXT.002", "COTS2").unwrap();
+
+        store.add_child(item1.id(), cots1.id(), 1).unwrap();
+        store.add_child(item2.id(), cots1.id(), 1).unwrap();
+        store.add_child(item2.id(), cots2.id(), 2).unwrap();
+        store.add_child(parent.id(), item1.id(), 1).unwrap();
+        store.add_child(parent.id(), item2.id(), 1).unwrap();
+
+        assert_eq!(Ok(false), store.can_release(parent.id()));
+
+        assert_eq!(
+            Some(Error::CantReleaseItem),
+            store.release(parent.id()).err()
+        );
+
+        assert!(store.release(item1.id()).is_ok());
+
+        assert_eq!(
+            Some(Error::CantReleaseItem),
+            store.release(parent.id()).err()
+        );
+
+        assert!(store.release(item2.id()).is_ok());
+        assert!(store.release(parent.id()).is_ok());
     }
 }

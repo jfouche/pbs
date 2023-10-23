@@ -20,7 +20,7 @@ impl std::ops::Deref for Database {
 // ItemMaturity
 // ==================================================================
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ItemMaturity {
     InProgress,
     Released,
@@ -68,7 +68,7 @@ impl ToSql for ItemMaturity {
 // ItemType
 // ==================================================================
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ItemType {
     Internal,
     External,
@@ -140,6 +140,10 @@ impl Item {
 
     pub fn maturity(&self) -> ItemMaturity {
         self.maturity
+    }
+
+    pub fn itype(&self) -> ItemType {
+        self.item_type
     }
 }
 
@@ -243,7 +247,7 @@ impl Database {
         )
         .convert()?;
         let id = self.last_insert_rowid();
-        self.item_by_id(id as usize)
+        self.item_by_id(id)
     }
 
     /// Retrive all [Item]s
@@ -288,7 +292,7 @@ impl Database {
     ///
     /// WARNING : this function returns the 1st result (but there
     /// should be only 1 result)
-    pub fn item_by_id(&self, id: usize) -> Result<Item> {
+    pub fn item_by_id(&self, id: i64) -> Result<Item> {
         let mut stmt = self
             .prepare("SELECT * FROM items WHERE id = ?1")
             .convert()?;
@@ -356,6 +360,21 @@ impl Database {
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
         Ok(items)
+    }
+
+    /// Release an Item
+    pub fn release(&mut self, id: i64) -> Result<Item> {
+        if self
+            .execute(
+                "UPDATE items set maturity=(?1) where id=(?2)",
+                (ItemMaturity::Released, id),
+            )
+            .convert()?
+            != 1
+        {
+            return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
+        }
+        self.item_by_id(id)
     }
 }
 

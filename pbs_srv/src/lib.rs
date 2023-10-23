@@ -86,7 +86,7 @@ async fn search(State(state): State<AppState>, Query(query): Query<Pattern>) -> 
     }
 }
 
-async fn get_item(State(state): State<AppState>, Path(id): Path<usize>) -> Result<Json<Item>> {
+async fn get_item(State(state): State<AppState>, Path(id): Path<i64>) -> Result<Json<Item>> {
     info!("get_item({id})");
     let item = state.store()?.item(id).map_err(|_e| Error::StoreError)?;
     Ok(Json(item))
