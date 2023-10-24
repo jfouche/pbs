@@ -11,6 +11,7 @@ pub enum Error {
     DatabaseErr(rusqlite::Error),
     PoisonousDatabaseLock,
     CantReleaseItem,
+    CantAddChild,
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

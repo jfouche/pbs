@@ -84,7 +84,7 @@ mod store {
 
     #[test]
     fn release() {
-        let mut store = Store::open(":memory:").expect("can(t open store");
+        let mut store = Store::open(":memory:").expect("can't open store");
         let parent = store.make_item("PARENT").unwrap();
         let item1 = store.make_item("ITEM1").unwrap();
         let item2 = store.make_item("ITEM2").unwrap();
@@ -111,5 +111,25 @@ mod store {
 
         assert!(store.release(item2.id()).is_ok());
         assert!(store.release(parent.id()).is_ok());
+    }
+
+    #[test]
+    fn add_child() {
+        let mut store = Store::open(":memory:").expect("can't open store");
+        let parent = store.make_item("PARENT").unwrap();
+        let item1 = store.make_item("ITEM1").unwrap();
+        let item2 = store.make_item("ITEM2").unwrap();
+
+        assert!(store.add_child(parent.id(), item1.id(), 1).is_ok());
+
+        assert!(store.release(item1.id()).is_ok());
+        assert!(store.release(parent.id()).is_ok());
+
+        // parent is released, one can't add child anymore
+        dbg!(store.item(parent.id()).unwrap());
+        assert_eq!(
+            Some(Error::CantAddChild),
+            dbg!(store.add_child(parent.id(), item2.id(), 1)).err()
+        );
     }
 }

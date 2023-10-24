@@ -77,7 +77,13 @@ impl Store {
 
     /// Add a child to an item
     pub fn add_child(&mut self, parent_id: i64, child_id: i64, quantity: usize) -> Result<()> {
-        self.db_write()?.add_child(parent_id, child_id, quantity)
+        let mut db = self.db_write()?;
+        let parent = db.item(parent_id)?;
+        if parent.itype() != ItemType::Make || parent.maturity() != ItemMaturity::InProgress {
+            Err(Error::CantAddChild)
+        } else {
+            db.add_child(parent_id, child_id, quantity)
+        }
     }
 
     /// Get all items children
