@@ -1,7 +1,8 @@
 use std::io::{self, Write};
 
 use parser::{
-    BuyParams, ChildAddParams, ChildDelParams, MakeParams, StockParams, TreeParams, WhereUsedParams,
+    ChildAddParams, ChildDelParams, ItemBuyParams, ItemMakeParams, ItemReleaseParams, StockParams,
+    TreeParams, WhereUsedParams,
 };
 use pbs_core::{Result, Store};
 
@@ -43,11 +44,12 @@ impl PbsCli {
 
     fn handle_cmd(&mut self, cmd: Command) {
         match cmd {
-            Command::ItemMake(params) => self.handle_create(params),
-            Command::ItemBuy(params) => self.handle_import(params),
-            Command::List => self.handle_list(),
+            Command::ItemMake(params) => self.handle_item_make(params),
+            Command::ItemBuy(params) => self.handle_item_buy(params),
+            Command::ItemRelease(params) => self.handle_item_release(params),
             Command::ChildAdd(params) => self.handle_child_add(params),
             Command::ChildDel(params) => self.handle_child_del(params),
+            Command::List => self.handle_list(),
             Command::Tree(params) => self.handle_tree(params),
             Command::WhereUsed(params) => self.handle_where_used(params),
             Command::Stock(params) => self.handle_stock(params),
@@ -55,16 +57,23 @@ impl PbsCli {
         }
     }
 
-    fn handle_create(&mut self, params: MakeParams) {
+    fn handle_item_make(&mut self, params: ItemMakeParams) {
         match self.store.make_item(&params.name) {
             Ok(item) => println!("  created {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
 
-    fn handle_import(&mut self, params: BuyParams) {
+    fn handle_item_buy(&mut self, params: ItemBuyParams) {
         match self.store.buy_item(&params.pn, &params.name) {
             Ok(item) => println!("  added {item}"),
+            Err(e) => eprintln!("ERROR : {:?}", e),
+        }
+    }
+
+    fn handle_item_release(&mut self, params: ItemReleaseParams) {
+        match self.store.release(params.id) {
+            Ok(item) => println!("  Item RELEASED"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
@@ -109,6 +118,7 @@ impl PbsCli {
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
+
     fn handle_where_used(&self, params: WhereUsedParams) {
         match self.store.where_used(params.id) {
             Ok(parents) => {

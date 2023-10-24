@@ -13,8 +13,9 @@ use nom::{
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Command {
-    ItemMake(MakeParams),
-    ItemBuy(BuyParams),
+    ItemMake(ItemMakeParams),
+    ItemBuy(ItemBuyParams),
+    ItemRelease(ItemReleaseParams),
     ChildAdd(ChildAddParams),
     ChildDel(ChildDelParams),
     List,
@@ -57,22 +58,33 @@ impl<I, O> CommandWithoutParamsResult<I, O> for IResult<I, O> {
     }
 }
 
+// Generic for a single <id> params
+pub struct SingleIdParams {
+    pub id: i64,
+}
+
+impl From<i64> for SingleIdParams {
+    fn from(value: i64) -> Self {
+        SingleIdParams { id: value }
+    }
+}
+
 /// Params for the `make` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct MakeParams {
+pub struct ItemMakeParams {
     pub name: String,
 }
 
-impl From<&str> for MakeParams {
+impl From<&str> for ItemMakeParams {
     fn from(value: &str) -> Self {
-        MakeParams {
+        ItemMakeParams {
             name: value.to_string(),
         }
     }
 }
 
-impl ParamsCmd for MakeParams {
+impl ParamsCmd for ItemMakeParams {
     fn cmd(self) -> Command {
         Command::ItemMake(self)
     }
@@ -80,23 +92,42 @@ impl ParamsCmd for MakeParams {
 /// Params for the `add` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct BuyParams {
+pub struct ItemBuyParams {
     pub pn: String,
     pub name: String,
 }
 
-impl From<(&str, &str)> for BuyParams {
+impl From<(&str, &str)> for ItemBuyParams {
     fn from(value: (&str, &str)) -> Self {
-        BuyParams {
+        ItemBuyParams {
             pn: value.0.to_string(),
             name: value.1.to_string(),
         }
     }
 }
 
-impl ParamsCmd for BuyParams {
+impl ParamsCmd for ItemBuyParams {
     fn cmd(self) -> Command {
         Command::ItemBuy(self)
+    }
+}
+
+/// Params for the `child add` command
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct ItemReleaseParams {
+    pub id: i64,
+}
+
+impl From<i64> for ItemReleaseParams {
+    fn from(value: i64) -> Self {
+        ItemReleaseParams { id: value }
+    }
+}
+
+impl ParamsCmd for ItemReleaseParams {
+    fn cmd(self) -> Command {
+        Command::ItemRelease(self)
     }
 }
 
@@ -210,24 +241,21 @@ impl ParamsCmd for StockParams {
 // ====================================================================
 
 /// parser for a cmd followed with params.
-fn cmd<'a, O, E: ParseError<&'a str>, F>(
-    cmd: &'a str,
-    parser: F,
-) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
+fn cmd<'a, O, E, F>(cmd: &'a str, parser: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
+    E: ParseError<&'a str>,
     F: Parser<&'a str, O, E>,
 {
     preceded(pair(space0, tag(cmd)), parser)
 }
 
 /// parser for a whitespace separated param
-fn param<I, O, E: ParseError<I>, F>(mut parser: F) -> impl FnMut(I) -> IResult<I, O, E>
+fn param<'a, O, E, F>(mut parser: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
-    I: InputTakeAtPosition,
-    <I as InputTakeAtPosition>::Item: AsChar + Clone,
-    F: Parser<I, O, E>,
+    E: ParseError<&'a str>,
+    F: Parser<&'a str, O, E>,
 {
-    move |input: I| {
+    move |input: &'a str| {
         let (input, _) = space1(input)?;
         parser.parse(input)
     }
@@ -269,18 +297,23 @@ fn eol(input: &str) -> IResult<&str, ()> {
 // ====================================================================
 
 fn cmd_item(input: &str) -> IResult<&str, Command> {
-    let params = alt((cmd_item_make, cmd_item_buy));
+    let params = alt((cmd_item_make, cmd_item_buy, cmd_item_release));
     cmd("item", params)(input)
 }
 
 fn cmd_item_make(input: &str) -> IResult<&str, Command> {
     let params = param(pn);
-    cmd("make", params)(input).cmd_n::<MakeParams>()
+    cmd("make", params)(input).cmd_n::<ItemMakeParams>()
 }
 
 fn cmd_item_buy(input: &str) -> IResult<&str, Command> {
     let params = pair(param(pn), param(name));
-    cmd("buy", params)(input).cmd_n::<BuyParams>()
+    cmd("buy", params)(input).cmd_n::<ItemBuyParams>()
+}
+
+fn cmd_item_release(input: &str) -> IResult<&str, Command> {
+    let params = param(id);
+    cmd("release", params)(input).cmd_n::<ItemReleaseParams>()
 }
 
 /// `list`
@@ -405,7 +438,7 @@ mod tests {
     fn test_item_make() {
         let cmd = get_command("item make NAME").unwrap();
         assert_eq!(
-            Command::ItemMake(MakeParams {
+            Command::ItemMake(ItemMakeParams {
                 name: "NAME".to_string(),
             }),
             cmd
@@ -416,7 +449,7 @@ mod tests {
     fn test_item_buy() {
         let cmd = dbg!(get_command("item  buy  PN  NAME  ")).unwrap();
         assert_eq!(
-            Command::ItemBuy(BuyParams {
+            Command::ItemBuy(ItemBuyParams {
                 pn: "PN".to_string(),
                 name: "NAME".to_string()
             }),
