@@ -104,7 +104,7 @@ async fn new_item(
     info!("pbs_srv::new_item({new_item:?})");
     let item = state
         .mut_store()?
-        .create_item(&new_item.name)
+        .make_item(&new_item.name)
         .map_err(|_e| Error::StoreError)?;
     Ok(Json(item))
 }

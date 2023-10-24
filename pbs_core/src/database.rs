@@ -70,28 +70,28 @@ impl ToSql for ItemMaturity {
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ItemType {
-    Internal,
-    External,
+    Make,
+    Buy,
 }
 
 impl std::fmt::Display for ItemType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let maturity = match self {
-            ItemType::Internal => "Internal",
-            ItemType::External => "External",
+            ItemType::Make => "Make",
+            ItemType::Buy => "Buy",
         };
         write!(f, "{maturity}")
     }
 }
 
-const DB_ITEM_INTERNAL: i64 = 0;
-const DB_ITEM_EXTERNAL: i64 = 1;
+const DB_ITEM_MAKE: i64 = 0;
+const DB_ITEM_BUY: i64 = 1;
 
 impl FromSql for ItemType {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value.as_i64()? {
-            DB_ITEM_INTERNAL => Ok(ItemType::Internal),
-            DB_ITEM_EXTERNAL => Ok(ItemType::External),
+            DB_ITEM_MAKE => Ok(ItemType::Make),
+            DB_ITEM_BUY => Ok(ItemType::Buy),
             _ => todo!("DB : Manage the item type conversion"),
         }
     }
@@ -100,8 +100,8 @@ impl FromSql for ItemType {
 impl ToSql for ItemType {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         let value = match self {
-            ItemType::Internal => DB_ITEM_INTERNAL,
-            ItemType::External => DB_ITEM_EXTERNAL,
+            ItemType::Make => DB_ITEM_MAKE,
+            ItemType::Buy => DB_ITEM_BUY,
         };
         Ok(ToSqlOutput::Owned(Value::Integer(value)))
     }
@@ -149,15 +149,25 @@ impl Item {
 
 impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{id} : [{pn}-{version:03}] - \"{name}\" - {maturity}",
-            id = self.id,
-            pn = self.pn,
-            name = self.name,
-            version = self.version,
-            maturity = self.maturity
-        )
+        match self.item_type {
+            ItemType::Make => write!(
+                f,
+                "{id} : MAKE [{pn}-{version:03}] - \"{name}\" - {maturity}",
+                id = self.id,
+                pn = self.pn,
+                name = self.name,
+                version = self.version,
+                maturity = self.maturity
+            ),
+            ItemType::Buy => write!(
+                f,
+                "{id} : BUY [{pn}] - \"{name}\" - {maturity}",
+                id = self.id,
+                pn = self.pn,
+                name = self.name,
+                maturity = self.maturity
+            ),
+        }
     }
 }
 
@@ -233,12 +243,12 @@ impl Database {
     // Add a new item to the store
     pub(crate) fn insert_item(&self, pn: &str, name: &str, t: ItemType) -> Result<Item> {
         const DEFAULT_VERSION: usize = 1;
-        const DEFAULT_INTERNAL_MATURITY: ItemMaturity = ItemMaturity::InProgress;
-        const DEFAULT_EXTERNAL_MATURITY: ItemMaturity = ItemMaturity::Released;
+        const DEFAULT_MATURITY_MAKE: ItemMaturity = ItemMaturity::InProgress;
+        const DEFAULT_MATURITY_BUY: ItemMaturity = ItemMaturity::Released;
 
         let maturity = match t {
-            ItemType::Internal => DEFAULT_INTERNAL_MATURITY,
-            ItemType::External => DEFAULT_EXTERNAL_MATURITY,
+            ItemType::Make => DEFAULT_MATURITY_MAKE,
+            ItemType::Buy => DEFAULT_MATURITY_BUY,
         };
 
         self.execute(
@@ -247,7 +257,7 @@ impl Database {
         )
         .convert()?;
         let id = self.last_insert_rowid();
-        self.item_by_id(id)
+        self.item(id)
     }
 
     /// Retrive all [Item]s
@@ -276,23 +286,8 @@ impl Database {
         Ok(())
     }
 
-    /// Get `Item` by it's PN
-    ///
-    /// WARNING : this function returns the 1st result (but there
-    /// should be only 1 result)
-    #[deprecated]
-    pub fn get_item_by_pn(&self, pn: &str) -> Result<Item> {
-        let mut stmt = self
-            .prepare("SELECT * FROM items WHERE pn = ?1")
-            .convert()?;
-        stmt.query_row([pn], |row| Item::try_from(row)).convert()
-    }
-
-    /// Get `Item` by it's ID
-    ///
-    /// WARNING : this function returns the 1st result (but there
-    /// should be only 1 result)
-    pub fn item_by_id(&self, id: i64) -> Result<Item> {
+    /// Get an `Item` by it's ID
+    pub fn item(&self, id: i64) -> Result<Item> {
         let mut stmt = self
             .prepare("SELECT * FROM items WHERE id = ?1")
             .convert()?;
@@ -374,87 +369,6 @@ impl Database {
         {
             return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
         }
-        self.item_by_id(id)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn init_database() {
-        assert!(Database::open(":memory:").is_ok());
-    }
-
-    #[test]
-    fn add_items() {
-        let db = Database::open(":memory:").unwrap();
-        assert!(db.insert_item("PN1", "NAME1", ItemType::Internal).is_ok());
-        let items = db.items();
-        assert!(items.is_ok());
-        let items = items.unwrap();
-        assert_eq!(1, items.len());
-    }
-
-    #[test]
-    fn add_childrens() {
-        let mut db = Database::open(":memory:").unwrap();
-        let item1 = db.insert_item("1", "PARENT", ItemType::Internal).unwrap();
-        let item2 = db.insert_item("11", "CHILD1", ItemType::Internal).unwrap();
-        let item3 = db.insert_item("12", "CHILD2", ItemType::Internal).unwrap();
-        db.add_child(item1.id, item2.id, 1).unwrap();
-        db.add_child(item1.id, item3.id, 2).unwrap();
-        let children = db.children(item1.id).unwrap();
-        assert_eq!(2, children.len());
-
-        // can't add an already existing child
-        assert!(db.add_child(item1.id, item3.id, 2).is_err());
-    }
-
-    #[test]
-    fn add_same_pn() {
-        let db = Database::open(":memory:").unwrap();
-        let _ = db.insert_item("PN", "ITEM", ItemType::Internal).unwrap();
-        assert!(db.insert_item("PN", "ANOTHER", ItemType::Internal).is_err());
-    }
-
-    #[test]
-    fn config() {
-        let db = Database::open(":memory:").unwrap();
-        assert_eq!("".to_string(), db.read_config("key").unwrap());
-        assert!(db.write_config("key", "value").is_ok());
-        assert_eq!("value".to_string(), db.read_config("key").unwrap());
-        let _ = db.write_config("key", "value 2");
-        assert_eq!("value 2", db.read_config("key").unwrap());
-    }
-
-    #[test]
-    fn search() {
-        let db = Database::open(":memory:").unwrap();
-        db.insert_item("00000001", "FIRST ITEM", ItemType::Internal)
-            .unwrap();
-        db.insert_item("00000002", "SECOND ITEM", ItemType::Internal)
-            .unwrap();
-        db.insert_item("00000003", "THIRD THING", ItemType::Internal)
-            .unwrap();
-        db.insert_item("123.456", "EXTERNAL THING", ItemType::Internal)
-            .unwrap();
-        db.insert_item("123.003", "OTHER EXTERNAL THING", ItemType::Internal)
-            .unwrap();
-        db.insert_item("123.678", "THING 1003", ItemType::Internal)
-            .unwrap();
-
-        let items = db.search("%000%").unwrap();
-        assert_eq!(3, items.len());
-        assert_eq!("00000001", items.get(0).unwrap().pn());
-        assert_eq!("00000002", items.get(1).unwrap().pn());
-        assert_eq!("00000003", items.get(2).unwrap().pn());
-
-        let items = db.search("%003%").unwrap();
-        assert_eq!(3, items.len());
-        assert_eq!("00000003", items.get(0).unwrap().pn());
-        assert_eq!("123.003", items.get(1).unwrap().pn());
-        assert_eq!("123.678", items.get(2).unwrap().pn());
+        self.item(id)
     }
 }

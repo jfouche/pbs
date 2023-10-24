@@ -1,7 +1,9 @@
 mod database;
 mod store;
+#[cfg(test)]
+mod tests;
 
-pub use database::{Database, Item};
+pub use database::{Database, Item, ItemMaturity, ItemType};
 pub use store::Store;
 
 #[derive(Debug, PartialEq)]

@@ -11,8 +11,8 @@ use nom::{
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Command {
-    Create(CreateParams),
-    Import(ImportParams),
+    Make(MakeParams),
+    Buy(BuyParams),
     AddChild(AddChildParams),
     List,
     Tree(TreeParams),
@@ -54,46 +54,46 @@ impl<I, O> CommandWithoutParamsResult<I, O> for IResult<I, O> {
     }
 }
 
-/// Params for the `create` command
+/// Params for the `make` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct CreateParams {
+pub struct MakeParams {
     pub name: String,
 }
 
-impl From<&str> for CreateParams {
+impl From<&str> for MakeParams {
     fn from(value: &str) -> Self {
-        CreateParams {
+        MakeParams {
             name: value.to_string(),
         }
     }
 }
 
-impl ParamsCmd for CreateParams {
+impl ParamsCmd for MakeParams {
     fn cmd(self) -> Command {
-        Command::Create(self)
+        Command::Make(self)
     }
 }
 /// Params for the `add` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct ImportParams {
+pub struct BuyParams {
     pub pn: String,
     pub name: String,
 }
 
-impl From<(&str, &str)> for ImportParams {
+impl From<(&str, &str)> for BuyParams {
     fn from(value: (&str, &str)) -> Self {
-        ImportParams {
+        BuyParams {
             pn: value.0.to_string(),
             name: value.1.to_string(),
         }
     }
 }
 
-impl ParamsCmd for ImportParams {
+impl ParamsCmd for BuyParams {
     fn cmd(self) -> Command {
-        Command::Import(self)
+        Command::Buy(self)
     }
 }
 
@@ -241,16 +241,16 @@ fn eol(input: &str) -> IResult<&str, ()> {
 // command parsers
 // ====================================================================
 
-/// `create <name>`
-fn cmd_create(input: &str) -> IResult<&str, Command> {
+/// `make <name>`
+fn cmd_make(input: &str) -> IResult<&str, Command> {
     let params = param(pn);
-    cmd("create", params)(input).cmd_n::<CreateParams>()
+    cmd("make", params)(input).cmd_n::<MakeParams>()
 }
 
-/// `add <pn> <name>`
-fn import_add(input: &str) -> IResult<&str, Command> {
+/// `buy <pn> <name>`
+fn cmd_buy(input: &str) -> IResult<&str, Command> {
     let params = pair(param(pn), param(name));
-    cmd("import", params)(input).cmd_n::<ImportParams>()
+    cmd("buy", params)(input).cmd_n::<BuyParams>()
 }
 
 /// `list`
@@ -297,8 +297,8 @@ pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&s
     delimited(
         space0,
         alt((
-            cmd_create,
-            import_add,
+            cmd_make,
+            cmd_buy,
             cmd_list,
             cmd_add_child,
             cmd_tree,
@@ -362,10 +362,10 @@ mod tests {
     }
 
     #[test]
-    fn test_add_ok() {
-        let cmd = get_command("\t add \t PN \t   NAME  ").unwrap();
+    fn test_buy_ok() {
+        let cmd = dbg!(get_command("\t buy \t PN \t   NAME  ")).unwrap();
         assert_eq!(
-            Command::Import(ImportParams {
+            Command::Buy(BuyParams {
                 pn: "PN".to_string(),
                 name: "NAME".to_string()
             }),
@@ -394,9 +394,9 @@ mod tests {
 
     #[test]
     fn test_create() {
-        let cmd = get_command("\t create \t   \t NAME ").unwrap();
+        let cmd = get_command("\t make \t   \t NAME ").unwrap();
         assert_eq!(
-            Command::Create(CreateParams {
+            Command::Make(MakeParams {
                 name: "NAME".to_string(),
             }),
             cmd

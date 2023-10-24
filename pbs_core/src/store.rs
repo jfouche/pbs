@@ -31,11 +31,13 @@ impl Store {
         })
     }
 
+    /// Shortcut to return a [Database] reader
     fn db_read(&self) -> Result<RwLockReadGuard<'_, Database>> {
         let db = self.db.read().map_err(|_| Error::PoisonousDatabaseLock)?;
         Ok(db)
     }
 
+    /// Shortcut to return a [Database] writer
     fn db_write(&mut self) -> Result<RwLockWriteGuard<'_, Database>> {
         let db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
         Ok(db)
@@ -51,38 +53,31 @@ impl Store {
         self.db_write()?.write_config(key, value)
     }
 
-    /// Create a new item, allocating a new PN
-    pub fn create_item(&mut self, name: &str) -> Result<Item> {
+    /// Create a new [ItemType::Make] [Item], allocating a new PN
+    pub fn make_item(&mut self, name: &str) -> Result<Item> {
         let mut db = self.db_write()?;
         let pn = simple_8digits_pn_provider(&mut db)?;
-        db.insert_item(&pn, name, ItemType::Internal)
+        db.insert_item(&pn, name, ItemType::Make)
     }
 
-    // Add a exinsting item (e.g. existing PN) to the store
-    pub fn import_item(&mut self, pn: &str, name: &str) -> Result<Item> {
-        self.db_write()?.insert_item(pn, name, ItemType::External)
+    /// Create a new [ItemType::Buy] [Item]
+    pub fn buy_item(&mut self, pn: &str, name: &str) -> Result<Item> {
+        self.db_write()?.insert_item(pn, name, ItemType::Buy)
     }
 
     /// Save the item
     pub fn save_item(&mut self, item: Item) -> Result<()> {
-        self.db
-            .write()
-            .map_err(|_| Error::PoisonousDatabaseLock)?
-            .update_item(item)
+        self.db_write()?.update_item(item)
     }
 
     /// Get all items
     pub fn items(&self) -> Result<Vec<Item>> {
-        self.db
-            .read()
-            .map_err(|_| Error::PoisonousDatabaseLock)?
-            .items()
+        self.db_read()?.items()
     }
 
     /// Add a child to an item
     pub fn add_child(&mut self, parent_id: i64, child_id: i64, quantity: usize) -> Result<()> {
-        let mut db = self.db.write().map_err(|_| Error::PoisonousDatabaseLock)?;
-        db.add_child(parent_id, child_id, quantity)
+        self.db_write()?.add_child(parent_id, child_id, quantity)
     }
 
     /// Get all items children
@@ -112,13 +107,13 @@ impl Store {
 
     /// Get an item by it's id
     pub fn item(&self, id: i64) -> Result<Item> {
-        self.db_read()?.item_by_id(id)
+        self.db_read()?.item(id)
     }
 
     /// Release an "in progress" Item
     pub fn release(&mut self, id: i64) -> Result<Item> {
-        let item = self.db_read()?.item_by_id(id)?;
-        if item.itype() != ItemType::Internal || item.maturity() != ItemMaturity::InProgress {
+        let item = self.db_read()?.item(id)?;
+        if item.itype() != ItemType::Make || item.maturity() != ItemMaturity::InProgress {
             Err(Error::CantReleaseItem)
         } else if self.can_release(id)? {
             let item = self.db_write()?.release(id)?;
@@ -139,43 +134,5 @@ impl Store {
             }
         }
         Ok(true)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{Error, Store};
-
-    #[test]
-    fn release() {
-        let mut store = Store::open(":memory:").expect("can(t open store");
-        let parent = store.create_item("PARENT").unwrap();
-        let item1 = store.create_item("ITEM1").unwrap();
-        let item2 = store.create_item("ITEM2").unwrap();
-        let cots1 = store.import_item("EXT.001", "COTS1").unwrap();
-        let cots2 = store.import_item("EXT.002", "COTS2").unwrap();
-
-        store.add_child(item1.id(), cots1.id(), 1).unwrap();
-        store.add_child(item2.id(), cots1.id(), 1).unwrap();
-        store.add_child(item2.id(), cots2.id(), 2).unwrap();
-        store.add_child(parent.id(), item1.id(), 1).unwrap();
-        store.add_child(parent.id(), item2.id(), 1).unwrap();
-
-        assert_eq!(Ok(false), store.can_release(parent.id()));
-
-        assert_eq!(
-            Some(Error::CantReleaseItem),
-            store.release(parent.id()).err()
-        );
-
-        assert!(store.release(item1.id()).is_ok());
-
-        assert_eq!(
-            Some(Error::CantReleaseItem),
-            store.release(parent.id()).err()
-        );
-
-        assert!(store.release(item2.id()).is_ok());
-        assert!(store.release(parent.id()).is_ok());
     }
 }
