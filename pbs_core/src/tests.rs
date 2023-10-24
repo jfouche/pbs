@@ -18,7 +18,7 @@ mod db {
 
     #[test]
     fn add_childrens() {
-        let mut db = Database::open(":memory:").unwrap();
+        let db = Database::open(":memory:").unwrap();
         let item1 = db.insert_item("1", "PARENT", Strategy::Make).unwrap();
         let item2 = db.insert_item("11", "CHILD1", Strategy::Make).unwrap();
         let item3 = db.insert_item("12", "CHILD2", Strategy::Make).unwrap();
@@ -84,7 +84,7 @@ mod store {
 
     #[test]
     fn release() {
-        let mut store = Store::open(":memory:").expect("can't open store");
+        let store = Store::open(":memory:").expect("can't open store");
         let parent = store.make_item("PARENT").unwrap();
         let item1 = store.make_item("ITEM1").unwrap();
         let item2 = store.make_item("ITEM2").unwrap();
@@ -115,7 +115,7 @@ mod store {
 
     #[test]
     fn add_child() {
-        let mut store = Store::open(":memory:").expect("can't open store");
+        let store = Store::open(":memory:").expect("can't open store");
         let parent = store.make_item("PARENT").unwrap();
         let item1 = store.make_item("ITEM1").unwrap();
         let item2 = store.make_item("ITEM2").unwrap();
@@ -135,7 +135,7 @@ mod store {
 
     #[test]
     fn make_obsolete() {
-        let mut store = Store::open(":memory:").expect("can't open store");
+        let store = Store::open(":memory:").expect("can't open store");
         let parent = store.make_item("PARENT").unwrap();
         let item1 = store.make_item("ITEM1").unwrap();
         let item2 = store.make_item("ITEM2").unwrap();

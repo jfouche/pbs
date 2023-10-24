@@ -295,12 +295,7 @@ impl Database {
     }
 
     /// Add a child to an item
-    pub(crate) fn add_child(
-        &mut self,
-        parent_id: i64,
-        child_id: i64,
-        quantity: usize,
-    ) -> Result<()> {
+    pub(crate) fn add_child(&self, parent_id: i64, child_id: i64, quantity: usize) -> Result<()> {
         if self
             .execute(
                 "INSERT INTO children (id_parent, id_child, quantity) VALUES(?1, ?2, ?3)",
@@ -315,7 +310,7 @@ impl Database {
     }
 
     /// Delete a child (and its quantity) from an item
-    pub(crate) fn delete_child(&mut self, parent_id: i64, child_id: i64) -> Result<()> {
+    pub(crate) fn delete_child(&self, parent_id: i64, child_id: i64) -> Result<()> {
         if self
             .execute(
                 "DELETE FROM children WHERE id_parent = ?1 and id_child = ?2",
@@ -373,7 +368,7 @@ impl Database {
     }
 
     /// Release an Item
-    pub fn release(&mut self, id: i64) -> Result<Item> {
+    pub fn release(&self, id: i64) -> Result<Item> {
         if self
             .execute(
                 "UPDATE items set maturity=(?1) where id=(?2)",
@@ -388,7 +383,7 @@ impl Database {
     }
 
     /// Make an Item [ItemMaturity::Obsolete]
-    pub fn make_obsolete(&mut self, id: i64) -> Result<Item> {
+    pub fn make_obsolete(&self, id: i64) -> Result<Item> {
         if self
             .execute(
                 "UPDATE items set maturity=(?1) where id=(?2)",
