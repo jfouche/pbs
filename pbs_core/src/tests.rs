@@ -1,5 +1,5 @@
 mod db {
-    use crate::{Database, Strategy};
+    use crate::{Database, ItemMaturity, Strategy};
 
     #[test]
     fn init_database() {
@@ -75,6 +75,22 @@ mod db {
         assert_eq!("00000003", items.get(0).unwrap().pn());
         assert_eq!("123.003", items.get(1).unwrap().pn());
         assert_eq!("123.678", items.get(2).unwrap().pn());
+    }
+
+    #[test]
+    fn ensure_unique() {
+        let db = Database::open(":memory:").unwrap();
+
+        // test unique PN / version
+        let res_1 = db.insert_item("PN", "NAME 1", Strategy::Buy);
+        assert!(res_1.is_ok());
+        assert!(db.insert_item("PN", "NAME 2", Strategy::Buy).is_err());
+
+        // test unique parent/child
+        let item1 = res_1.unwrap();
+        let item2 = db.insert_item("PN2", "NAME 2", Strategy::Make).unwrap();
+        assert!(db.add_child(item2.id(), item1.id(), 10).is_ok());
+        assert!(db.add_child(item2.id(), item1.id(), 5).is_err());
     }
 }
 
