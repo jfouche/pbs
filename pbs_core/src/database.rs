@@ -314,6 +314,21 @@ impl Database {
         Ok(())
     }
 
+    /// Delete a child (and its quantity) from an item
+    pub(crate) fn delete_child(&mut self, parent_id: i64, child_id: i64) -> Result<()> {
+        if self
+            .execute(
+                "DELETE FROM children WHERE id_parent = ?1 and id_child = ?2",
+                (parent_id, child_id),
+            )
+            .convert()?
+            != 1
+        {
+            return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
+        }
+        Ok(())
+    }
+
     /// Get children of an item
     pub(crate) fn children(&self, parent_id: i64) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self

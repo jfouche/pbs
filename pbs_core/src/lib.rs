@@ -12,6 +12,7 @@ pub enum Error {
     PoisonousDatabaseLock,
     CantReleaseItem,
     CantAddChild,
+    CantRemoveChild,
     CantMakeObsolete,
 }
 

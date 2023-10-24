@@ -155,17 +155,30 @@ mod store {
         store.add_child(parent.id(), item1.id(), 1).unwrap();
         store.add_child(parent.id(), item2.id(), 1).unwrap();
 
+        assert!(store.release(item1.id()).is_ok());
+        assert!(store.release(item2.id()).is_ok());
         assert_eq!(
             ItemMaturity::Obsolete,
             store.make_obsolete(cots2.id()).unwrap().maturity()
         );
-
         assert_eq!(
             ItemMaturity::Obsolete,
             store.item(item2.id()).unwrap().maturity()
         );
         assert_eq!(
             ItemMaturity::InProgress,
+            store.item(parent.id()).unwrap().maturity()
+        );
+
+        assert!(store.remove_child(parent.id(), item2.id()).is_ok());
+        assert!(store.release(parent.id()).is_ok());
+
+        assert_eq!(
+            ItemMaturity::Obsolete,
+            store.make_obsolete(cots1.id()).unwrap().maturity()
+        );
+        assert_eq!(
+            ItemMaturity::Obsolete,
             store.item(item1.id()).unwrap().maturity()
         );
         assert_eq!(

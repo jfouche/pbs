@@ -83,6 +83,16 @@ impl Store {
         }
     }
 
+    pub fn remove_child(&mut self, parent_id: i64, child_id: i64) -> Result<()> {
+        let mut db = self.db_write()?;
+        let parent = db.item(parent_id)?;
+        if parent.strategy() != Strategy::Make || parent.maturity() != ItemMaturity::InProgress {
+            Err(Error::CantRemoveChild)
+        } else {
+            db.delete_child(parent_id, child_id)
+        }
+    }
+
     /// Get all items children
     pub fn children(&self, id: i64) -> Result<Vec<(Item, usize)>> {
         self.db_read()?.children(id)
@@ -154,14 +164,16 @@ impl Store {
         }
     }
 
-    /// Recursivly mark items and their parents [ItemMaturity::Obsolete]
+    /// Recursively mark item and its parents [ItemMaturity::Obsolete] if it's not [ItemMaturity::InProgress]
     fn make_where_used_obsolete(db: &mut RwLockWriteGuard<'_, Database>, id: i64) -> Result<()> {
-        // mark item as obsolete...
-        db.make_obsolete(id)?;
-        // ..  as well as its parents
-        for parent in db.where_used(id)? {
-            assert_eq!(Strategy::Make, parent.strategy());
-            Self::make_where_used_obsolete(db, parent.id())?;
+        if db.item(id)?.maturity() != ItemMaturity::InProgress {
+            // mark item as obsolete...
+            db.make_obsolete(id)?;
+            // ..  as well as its parents
+            for parent in db.where_used(id)? {
+                assert_eq!(Strategy::Make, parent.strategy());
+                Self::make_where_used_obsolete(db, parent.id())?;
+            }
         }
         Ok(())
     }
