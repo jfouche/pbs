@@ -3,7 +3,7 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-pub use database::{Database, Item, ItemMaturity, ItemType};
+pub use database::{Database, Item, ItemMaturity, Strategy};
 pub use store::Store;
 
 #[derive(Debug, PartialEq)]
@@ -12,6 +12,7 @@ pub enum Error {
     PoisonousDatabaseLock,
     CantReleaseItem,
     CantAddChild,
+    CantMakeObsolete,
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

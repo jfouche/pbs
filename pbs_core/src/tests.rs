@@ -1,5 +1,5 @@
 mod db {
-    use crate::{Database, ItemType};
+    use crate::{Database, Strategy};
 
     #[test]
     fn init_database() {
@@ -9,7 +9,7 @@ mod db {
     #[test]
     fn add_items() {
         let db = Database::open(":memory:").unwrap();
-        assert!(db.insert_item("PN1", "NAME1", ItemType::Make).is_ok());
+        assert!(db.insert_item("PN1", "NAME1", Strategy::Make).is_ok());
         let items = db.items();
         assert!(items.is_ok());
         let items = items.unwrap();
@@ -19,9 +19,9 @@ mod db {
     #[test]
     fn add_childrens() {
         let mut db = Database::open(":memory:").unwrap();
-        let item1 = db.insert_item("1", "PARENT", ItemType::Make).unwrap();
-        let item2 = db.insert_item("11", "CHILD1", ItemType::Make).unwrap();
-        let item3 = db.insert_item("12", "CHILD2", ItemType::Make).unwrap();
+        let item1 = db.insert_item("1", "PARENT", Strategy::Make).unwrap();
+        let item2 = db.insert_item("11", "CHILD1", Strategy::Make).unwrap();
+        let item3 = db.insert_item("12", "CHILD2", Strategy::Make).unwrap();
         db.add_child(item1.id(), item2.id(), 1).unwrap();
         db.add_child(item1.id(), item3.id(), 2).unwrap();
         let children = db.children(item1.id()).unwrap();
@@ -34,8 +34,8 @@ mod db {
     #[test]
     fn add_same_pn() {
         let db = Database::open(":memory:").unwrap();
-        let _ = db.insert_item("PN", "ITEM", ItemType::Make).unwrap();
-        assert!(db.insert_item("PN", "ANOTHER", ItemType::Make).is_err());
+        let _ = db.insert_item("PN", "ITEM", Strategy::Make).unwrap();
+        assert!(db.insert_item("PN", "ANOTHER", Strategy::Make).is_err());
     }
 
     #[test]
@@ -51,17 +51,17 @@ mod db {
     #[test]
     fn search() {
         let db = Database::open(":memory:").unwrap();
-        db.insert_item("00000001", "FIRST ITEM", ItemType::Make)
+        db.insert_item("00000001", "FIRST ITEM", Strategy::Make)
             .unwrap();
-        db.insert_item("00000002", "SECOND ITEM", ItemType::Make)
+        db.insert_item("00000002", "SECOND ITEM", Strategy::Make)
             .unwrap();
-        db.insert_item("00000003", "THIRD THING", ItemType::Make)
+        db.insert_item("00000003", "THIRD THING", Strategy::Make)
             .unwrap();
-        db.insert_item("123.456", "BUY THING", ItemType::Make)
+        db.insert_item("123.456", "BUY THING", Strategy::Make)
             .unwrap();
-        db.insert_item("123.003", "OTHER BUY THING", ItemType::Make)
+        db.insert_item("123.003", "OTHER BUY THING", Strategy::Make)
             .unwrap();
-        db.insert_item("123.678", "THING 1003", ItemType::Make)
+        db.insert_item("123.678", "THING 1003", Strategy::Make)
             .unwrap();
 
         let items = db.search("%000%").unwrap();
@@ -80,7 +80,7 @@ mod db {
 
 #[cfg(test)]
 mod store {
-    use crate::{Error, Store};
+    use crate::{Error, ItemMaturity, Store};
 
     #[test]
     fn release() {
@@ -130,6 +130,47 @@ mod store {
         assert_eq!(
             Some(Error::CantAddChild),
             dbg!(store.add_child(parent.id(), item2.id(), 1)).err()
+        );
+    }
+
+    #[test]
+    fn make_obsolete() {
+        let mut store = Store::open(":memory:").expect("can't open store");
+        let parent = store.make_item("PARENT").unwrap();
+        let item1 = store.make_item("ITEM1").unwrap();
+        let item2 = store.make_item("ITEM2").unwrap();
+        let cots1 = store.buy_item("EXT.001", "COTS1").unwrap();
+        let cots2 = store.buy_item("EXT.002", "COTS2").unwrap();
+
+        // parent           PARENT
+        //  + item1         ITEM1     1
+        //  |  + cots1      COTS1     1
+        //  + item2         ITEM2     1
+        //  |  + cots1      COTS1     1
+        //  |  + cots2      COTS2     2
+
+        store.add_child(item1.id(), cots1.id(), 1).unwrap();
+        store.add_child(item2.id(), cots1.id(), 1).unwrap();
+        store.add_child(item2.id(), cots2.id(), 2).unwrap();
+        store.add_child(parent.id(), item1.id(), 1).unwrap();
+        store.add_child(parent.id(), item2.id(), 1).unwrap();
+
+        assert_eq!(
+            ItemMaturity::Obsolete,
+            store.make_obsolete(cots2.id()).unwrap().maturity()
+        );
+
+        assert_eq!(
+            ItemMaturity::Obsolete,
+            store.item(item2.id()).unwrap().maturity()
+        );
+        assert_eq!(
+            ItemMaturity::InProgress,
+            store.item(item1.id()).unwrap().maturity()
+        );
+        assert_eq!(
+            ItemMaturity::Obsolete,
+            store.item(parent.id()).unwrap().maturity()
         );
     }
 }

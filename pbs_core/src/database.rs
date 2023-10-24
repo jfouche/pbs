@@ -69,16 +69,16 @@ impl ToSql for ItemMaturity {
 // ==================================================================
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum ItemType {
+pub enum Strategy {
     Make,
     Buy,
 }
 
-impl std::fmt::Display for ItemType {
+impl std::fmt::Display for Strategy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let maturity = match self {
-            ItemType::Make => "Make",
-            ItemType::Buy => "Buy",
+            Strategy::Make => "Make",
+            Strategy::Buy => "Buy",
         };
         write!(f, "{maturity}")
     }
@@ -87,21 +87,21 @@ impl std::fmt::Display for ItemType {
 const DB_ITEM_MAKE: i64 = 0;
 const DB_ITEM_BUY: i64 = 1;
 
-impl FromSql for ItemType {
+impl FromSql for Strategy {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value.as_i64()? {
-            DB_ITEM_MAKE => Ok(ItemType::Make),
-            DB_ITEM_BUY => Ok(ItemType::Buy),
-            _ => todo!("DB : Manage the item type conversion"),
+            DB_ITEM_MAKE => Ok(Strategy::Make),
+            DB_ITEM_BUY => Ok(Strategy::Buy),
+            _ => todo!("DB : Manage the item strategy conversion"),
         }
     }
 }
 
-impl ToSql for ItemType {
+impl ToSql for Strategy {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         let value = match self {
-            ItemType::Make => DB_ITEM_MAKE,
-            ItemType::Buy => DB_ITEM_BUY,
+            Strategy::Make => DB_ITEM_MAKE,
+            Strategy::Buy => DB_ITEM_BUY,
         };
         Ok(ToSqlOutput::Owned(Value::Integer(value)))
     }
@@ -118,7 +118,7 @@ pub struct Item {
     version: usize,
     name: String,
     maturity: ItemMaturity,
-    item_type: ItemType,
+    strategy: Strategy,
 }
 
 impl Item {
@@ -142,15 +142,15 @@ impl Item {
         self.maturity
     }
 
-    pub fn itype(&self) -> ItemType {
-        self.item_type
+    pub fn strategy(&self) -> Strategy {
+        self.strategy
     }
 }
 
 impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.item_type {
-            ItemType::Make => write!(
+        match self.strategy {
+            Strategy::Make => write!(
                 f,
                 "{id} : MAKE [{pn}-{version:03}] - \"{name}\" - {maturity}",
                 id = self.id,
@@ -159,7 +159,7 @@ impl std::fmt::Display for Item {
                 version = self.version,
                 maturity = self.maturity
             ),
-            ItemType::Buy => write!(
+            Strategy::Buy => write!(
                 f,
                 "{id} : BUY [{pn}] - \"{name}\" - {maturity}",
                 id = self.id,
@@ -194,7 +194,7 @@ impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
             name: value.get("name")?,
             version: value.get("version")?,
             maturity: value.get("maturity")?,
-            item_type: value.get("type")?,
+            strategy: value.get("strategy")?,
         })
     }
 }
@@ -241,18 +241,18 @@ impl Database {
     }
 
     // Add a new item to the store
-    pub(crate) fn insert_item(&self, pn: &str, name: &str, t: ItemType) -> Result<Item> {
+    pub(crate) fn insert_item(&self, pn: &str, name: &str, t: Strategy) -> Result<Item> {
         const DEFAULT_VERSION: usize = 1;
         const DEFAULT_MATURITY_MAKE: ItemMaturity = ItemMaturity::InProgress;
         const DEFAULT_MATURITY_BUY: ItemMaturity = ItemMaturity::Released;
 
         let maturity = match t {
-            ItemType::Make => DEFAULT_MATURITY_MAKE,
-            ItemType::Buy => DEFAULT_MATURITY_BUY,
+            Strategy::Make => DEFAULT_MATURITY_MAKE,
+            Strategy::Buy => DEFAULT_MATURITY_BUY,
         };
 
         self.execute(
-            "INSERT INTO items(pn, name, version, maturity, type) VALUES(?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO items(pn, name, version, maturity, strategy) VALUES(?1, ?2, ?3, ?4, ?5)",
             (pn, name, DEFAULT_VERSION, maturity, t),
         )
         .convert()?;
@@ -272,19 +272,19 @@ impl Database {
     }
 
     /// Update the item
-    pub(crate) fn update_item(&mut self, item: Item) -> Result<()> {
-        if self
-            .execute(
-                "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
-                (&item.pn, &item.name, item.id),
-            )
-            .convert()?
-            != 1
-        {
-            return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
-        }
-        Ok(())
-    }
+    // pub(crate) fn update_item(&mut self, item: Item) -> Result<()> {
+    //     if self
+    //         .execute(
+    //             "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
+    //             (&item.pn, &item.name, item.id),
+    //         )
+    //         .convert()?
+    //         != 1
+    //     {
+    //         return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
+    //     }
+    //     Ok(())
+    // }
 
     /// Get an `Item` by it's ID
     pub fn item(&self, id: i64) -> Result<Item> {
@@ -363,6 +363,21 @@ impl Database {
             .execute(
                 "UPDATE items set maturity=(?1) where id=(?2)",
                 (ItemMaturity::Released, id),
+            )
+            .convert()?
+            != 1
+        {
+            return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
+        }
+        self.item(id)
+    }
+
+    /// Make an Item [ItemMaturity::Obsolete]
+    pub fn make_obsolete(&mut self, id: i64) -> Result<Item> {
+        if self
+            .execute(
+                "UPDATE items set maturity=(?1) where id=(?2)",
+                (ItemMaturity::Obsolete, id),
             )
             .convert()?
             != 1
