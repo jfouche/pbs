@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_till, take_while1},
@@ -5,15 +7,16 @@ use nom::{
     combinator::{eof, map_res},
     error::ParseError,
     sequence::{delimited, pair, preceded, tuple},
-    AsChar, Compare, IResult, InputLength, InputTake, InputTakeAtPosition, Parser,
+    AsChar, IResult, InputTakeAtPosition, Parser,
 };
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum Command {
-    Make(MakeParams),
-    Buy(BuyParams),
-    AddChild(AddChildParams),
+    ItemMake(MakeParams),
+    ItemBuy(BuyParams),
+    ChildAdd(ChildAddParams),
+    ChildDel(ChildDelParams),
     List,
     Tree(TreeParams),
     WhereUsed(WhereUsedParams),
@@ -71,7 +74,7 @@ impl From<&str> for MakeParams {
 
 impl ParamsCmd for MakeParams {
     fn cmd(self) -> Command {
-        Command::Make(self)
+        Command::ItemMake(self)
     }
 }
 /// Params for the `add` command
@@ -93,22 +96,22 @@ impl From<(&str, &str)> for BuyParams {
 
 impl ParamsCmd for BuyParams {
     fn cmd(self) -> Command {
-        Command::Buy(self)
+        Command::ItemBuy(self)
     }
 }
 
-/// Params for the `add-child` command
+/// Params for the `child add` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct AddChildParams {
+pub struct ChildAddParams {
     pub parent_id: i64,
     pub child_id: i64,
     pub quantity: usize,
 }
 
-impl From<(i64, i64, usize)> for AddChildParams {
+impl From<(i64, i64, usize)> for ChildAddParams {
     fn from(value: (i64, i64, usize)) -> Self {
-        AddChildParams {
+        ChildAddParams {
             parent_id: value.0,
             child_id: value.1,
             quantity: value.2,
@@ -116,9 +119,32 @@ impl From<(i64, i64, usize)> for AddChildParams {
     }
 }
 
-impl ParamsCmd for AddChildParams {
+impl ParamsCmd for ChildAddParams {
     fn cmd(self) -> Command {
-        Command::AddChild(self)
+        Command::ChildAdd(self)
+    }
+}
+
+/// Params for the `child del` command
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct ChildDelParams {
+    pub parent_id: i64,
+    pub child_id: i64,
+}
+
+impl From<(i64, i64)> for ChildDelParams {
+    fn from(value: (i64, i64)) -> Self {
+        ChildDelParams {
+            parent_id: value.0,
+            child_id: value.1,
+        }
+    }
+}
+
+impl ParamsCmd for ChildDelParams {
+    fn cmd(self) -> Command {
+        Command::ChildDel(self)
     }
 }
 
@@ -184,13 +210,14 @@ impl ParamsCmd for StockParams {
 // ====================================================================
 
 /// parser for a cmd followed with params.
-fn cmd<I, O, E: ParseError<I>, F, T>(cmd: T, parser: F) -> impl FnMut(I) -> IResult<I, O, E>
+fn cmd<'a, O, E: ParseError<&'a str>, F>(
+    cmd: &'a str,
+    parser: F,
+) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
-    I: InputTake + Compare<T>,
-    T: InputLength + Clone,
-    F: Parser<I, O, E>,
+    F: Parser<&'a str, O, E>,
 {
-    preceded(tag(cmd), parser)
+    preceded(pair(space0, tag(cmd)), parser)
 }
 
 /// parser for a whitespace separated param
@@ -241,14 +268,17 @@ fn eol(input: &str) -> IResult<&str, ()> {
 // command parsers
 // ====================================================================
 
-/// `make <name>`
-fn cmd_make(input: &str) -> IResult<&str, Command> {
+fn cmd_item(input: &str) -> IResult<&str, Command> {
+    let params = alt((cmd_item_make, cmd_item_buy));
+    cmd("item", params)(input)
+}
+
+fn cmd_item_make(input: &str) -> IResult<&str, Command> {
     let params = param(pn);
     cmd("make", params)(input).cmd_n::<MakeParams>()
 }
 
-/// `buy <pn> <name>`
-fn cmd_buy(input: &str) -> IResult<&str, Command> {
+fn cmd_item_buy(input: &str) -> IResult<&str, Command> {
     let params = pair(param(pn), param(name));
     cmd("buy", params)(input).cmd_n::<BuyParams>()
 }
@@ -280,10 +310,21 @@ fn cmd_where_used(input: &str) -> IResult<&str, Command> {
     cmd("where-used", params)(input).cmd_n::<WhereUsedParams>()
 }
 
-/// `add-child <parent-id> <child-id> <quantity>`
-fn cmd_add_child(input: &str) -> IResult<&str, Command> {
+/// `child ...`
+fn cmd_child(input: &str) -> IResult<&str, Command> {
+    let params = alt((cmd_child_add, cmd_child_del));
+    cmd("child", params)(input)
+}
+
+/// `child add <parent-id> <child-id> <quantity>`
+fn cmd_child_add(input: &str) -> IResult<&str, Command> {
     let params = tuple((param(id), param(id), param(quantity)));
-    cmd("add-child", params)(input).cmd_n::<AddChildParams>()
+    cmd("add", params)(input).cmd_n::<ChildAddParams>()
+}
+/// `child del <parent-id> <child-id>`
+fn cmd_child_del(input: &str) -> IResult<&str, Command> {
+    let params = tuple((param(id), param(id)));
+    cmd("del", params)(input).cmd_n::<ChildDelParams>()
 }
 
 /// `stock <pn>`
@@ -297,10 +338,9 @@ pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&s
     delimited(
         space0,
         alt((
-            cmd_make,
-            cmd_buy,
+            cmd_item,
             cmd_list,
-            cmd_add_child,
+            cmd_child,
             cmd_tree,
             cmd_help,
             cmd_exit,
@@ -362,10 +402,21 @@ mod tests {
     }
 
     #[test]
-    fn test_buy_ok() {
-        let cmd = dbg!(get_command("\t buy \t PN \t   NAME  ")).unwrap();
+    fn test_item_make() {
+        let cmd = get_command("item make NAME").unwrap();
         assert_eq!(
-            Command::Buy(BuyParams {
+            Command::ItemMake(MakeParams {
+                name: "NAME".to_string(),
+            }),
+            cmd
+        );
+    }
+
+    #[test]
+    fn test_item_buy() {
+        let cmd = dbg!(get_command("item  buy  PN  NAME  ")).unwrap();
+        assert_eq!(
+            Command::ItemBuy(BuyParams {
                 pn: "PN".to_string(),
                 name: "NAME".to_string()
             }),
@@ -380,10 +431,10 @@ mod tests {
     }
 
     #[test]
-    fn test_add_child() {
-        let cmd = get_command("\t add-child \t 1 \t   17\t  456 \t ").unwrap();
+    fn test_child_add() {
+        let cmd = get_command("\t child add \t 1 \t   17\t  456 \t ").unwrap();
         assert_eq!(
-            Command::AddChild(AddChildParams {
+            Command::ChildAdd(ChildAddParams {
                 parent_id: 1,
                 child_id: 17,
                 quantity: 456
@@ -393,11 +444,12 @@ mod tests {
     }
 
     #[test]
-    fn test_create() {
-        let cmd = get_command("\t make \t   \t NAME ").unwrap();
+    fn test_child_del() {
+        let cmd = get_command("\t child del \t 1 \t   17\t ").unwrap();
         assert_eq!(
-            Command::Make(MakeParams {
-                name: "NAME".to_string(),
+            Command::ChildDel(ChildDelParams {
+                parent_id: 1,
+                child_id: 17,
             }),
             cmd
         );

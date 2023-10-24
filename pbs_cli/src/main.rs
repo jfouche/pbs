@@ -1,6 +1,8 @@
 use std::io::{self, Write};
 
-use parser::{AddChildParams, BuyParams, MakeParams, StockParams, TreeParams, WhereUsedParams};
+use parser::{
+    BuyParams, ChildAddParams, ChildDelParams, MakeParams, StockParams, TreeParams, WhereUsedParams,
+};
 use pbs_core::{Result, Store};
 
 use crate::parser::{get_command, Command};
@@ -12,10 +14,11 @@ const STORE_URI: &str = "store.db3";
 const COMMANDS: &str = r#"
  - help                                           This help
  - exit                                           Exit the pbs CLI
- - make <NAME>                                    Create a "make" item, allocating a PN
- - buy <PART_NUMBER> <NAME>                       Import a "buy" item, with it's external PN
+ - item make <NAME>                               Create a "make" item, allocating a PN
+ - item buy <PART_NUMBER> <NAME>                  Create a "Buy" item, with it's external PN
  - list                                           List all items in the store
- - add-child <PARENT_ID> <CHILD_ID> <QUANTITY>    Add a child item to an parent item
+ - child add <PARENT_ID> <CHILD_ID> <QUANTITY>    Add a child item to an parent item
+ - child del <PARENT_ID> <CHILD_ID>               Remove a child item from a parent item
  - tree <ID>                                      Show the children of an item
  - where-used <ID>                                Show all items where the given <PN> is used"#;
 
@@ -40,10 +43,11 @@ impl PbsCli {
 
     fn handle_cmd(&mut self, cmd: Command) {
         match cmd {
-            Command::Make(params) => self.handle_create(params),
-            Command::Buy(params) => self.handle_import(params),
+            Command::ItemMake(params) => self.handle_create(params),
+            Command::ItemBuy(params) => self.handle_import(params),
             Command::List => self.handle_list(),
-            Command::AddChild(params) => self.handle_add_child(params),
+            Command::ChildAdd(params) => self.handle_child_add(params),
+            Command::ChildDel(params) => self.handle_child_del(params),
             Command::Tree(params) => self.handle_tree(params),
             Command::WhereUsed(params) => self.handle_where_used(params),
             Command::Stock(params) => self.handle_stock(params),
@@ -76,7 +80,7 @@ impl PbsCli {
         }
     }
 
-    fn handle_add_child(&mut self, params: AddChildParams) {
+    fn handle_child_add(&mut self, params: ChildAddParams) {
         if let Err(e) = self
             .store
             .add_child(params.parent_id, params.child_id, params.quantity)
@@ -85,13 +89,23 @@ impl PbsCli {
         }
     }
 
+    fn handle_child_del(&mut self, params: ChildDelParams) {
+        if let Err(e) = self.store.remove_child(params.parent_id, params.child_id) {
+            eprintln!("ERROR: {:?}", e);
+        }
+    }
+
     fn handle_tree(&self, params: TreeParams) {
-        match self.store.children(params.id) {
-            Ok(children) => {
-                for (item, quantity) in children {
-                    println!("  - {item} : {quantity}");
+        match self.store.item(params.id) {
+            Ok(parent) => match self.store.children(params.id) {
+                Ok(children) => {
+                    println!("{parent}");
+                    for (item, quantity) in children {
+                        println!("  - {item} : {quantity}");
+                    }
                 }
-            }
+                Err(e) => eprintln!("ERROR : {:?}", e),
+            },
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
