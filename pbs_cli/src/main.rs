@@ -59,21 +59,21 @@ impl PbsCli {
 
     fn handle_item_make(&mut self, params: ItemMakeParams) {
         match self.store.make_item(&params.name) {
-            Ok(item) => println!("  created {item}"),
+            Ok(item) => println!("  ADDED {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
 
     fn handle_item_buy(&mut self, params: ItemBuyParams) {
         match self.store.buy_item(&params.pn, &params.name) {
-            Ok(item) => println!("  added {item}"),
+            Ok(item) => println!("  ADDED {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
 
     fn handle_item_release(&mut self, params: ItemReleaseParams) {
         match self.store.release(params.id) {
-            Ok(item) => println!("  Item RELEASED"),
+            Ok(item) => println!("  RELEASED : {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
@@ -108,7 +108,7 @@ impl PbsCli {
         match self.store.item(params.id) {
             Ok(parent) => match self.store.children(params.id) {
                 Ok(children) => {
-                    println!("{parent}");
+                    println!("{parent} childrens :");
                     for (item, quantity) in children {
                         println!("  - {item} : {quantity}");
                     }
@@ -120,12 +120,16 @@ impl PbsCli {
     }
 
     fn handle_where_used(&self, params: WhereUsedParams) {
-        match self.store.where_used(params.id) {
-            Ok(parents) => {
-                for item in parents {
-                    println!("  - {item}");
+        match self.store.item(params.id) {
+            Ok(child) => match self.store.where_used(params.id) {
+                Ok(parents) => {
+                    println!("{child} parents :");
+                    for item in parents {
+                        println!("  - {item}");
+                    }
                 }
-            }
+                Err(e) => eprintln!("ERROR : {:?}", e),
+            },
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
