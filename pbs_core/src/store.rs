@@ -144,7 +144,7 @@ impl Store {
 
 #[cfg(test)]
 mod test {
-    use crate::{Error, Store};
+    use crate::{database::ItemMaturity, Error, Store};
 
     #[test]
     fn release() {
@@ -177,5 +177,9 @@ mod test {
 
         assert!(store.release(item2.id()).is_ok());
         assert!(store.release(parent.id()).is_ok());
+        assert_eq!(
+            ItemMaturity::Released,
+            store.item(parent.id()).unwrap().maturity()
+        );
     }
 }
