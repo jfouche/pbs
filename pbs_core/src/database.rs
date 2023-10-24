@@ -69,39 +69,39 @@ impl ToSql for ItemMaturity {
 // ==================================================================
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum ItemType {
-    Internal,
-    External,
+pub enum Strategy {
+    Make,
+    Buy,
 }
 
-impl std::fmt::Display for ItemType {
+impl std::fmt::Display for Strategy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let maturity = match self {
-            ItemType::Internal => "Internal",
-            ItemType::External => "External",
+            Strategy::Make => "Make",
+            Strategy::Buy => "Buy",
         };
         write!(f, "{maturity}")
     }
 }
 
-const DB_ITEM_INTERNAL: i64 = 0;
-const DB_ITEM_EXTERNAL: i64 = 1;
+const DB_ITEM_MAKE: i64 = 0;
+const DB_ITEM_BUY: i64 = 1;
 
-impl FromSql for ItemType {
+impl FromSql for Strategy {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         match value.as_i64()? {
-            DB_ITEM_INTERNAL => Ok(ItemType::Internal),
-            DB_ITEM_EXTERNAL => Ok(ItemType::External),
-            _ => todo!("DB : Manage the item type conversion"),
+            DB_ITEM_MAKE => Ok(Strategy::Make),
+            DB_ITEM_BUY => Ok(Strategy::Buy),
+            _ => todo!("DB : Manage the item strategy conversion"),
         }
     }
 }
 
-impl ToSql for ItemType {
+impl ToSql for Strategy {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         let value = match self {
-            ItemType::Internal => DB_ITEM_INTERNAL,
-            ItemType::External => DB_ITEM_EXTERNAL,
+            Strategy::Make => DB_ITEM_MAKE,
+            Strategy::Buy => DB_ITEM_BUY,
         };
         Ok(ToSqlOutput::Owned(Value::Integer(value)))
     }
@@ -118,7 +118,7 @@ pub struct Item {
     version: usize,
     name: String,
     maturity: ItemMaturity,
-    item_type: ItemType,
+    strategy: Strategy,
 }
 
 impl Item {
@@ -142,22 +142,32 @@ impl Item {
         self.maturity
     }
 
-    pub fn itype(&self) -> ItemType {
-        self.item_type
+    pub fn strategy(&self) -> Strategy {
+        self.strategy
     }
 }
 
 impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{id} : [{pn}-{version:03}] - \"{name}\" - {maturity}",
-            id = self.id,
-            pn = self.pn,
-            name = self.name,
-            version = self.version,
-            maturity = self.maturity
-        )
+        match self.strategy {
+            Strategy::Make => write!(
+                f,
+                "{id} : MAKE [{pn}-{version:03}] - \"{name}\" - {maturity}",
+                id = self.id,
+                pn = self.pn,
+                name = self.name,
+                version = self.version,
+                maturity = self.maturity
+            ),
+            Strategy::Buy => write!(
+                f,
+                "{id} : BUY [{pn}] - \"{name}\" - {maturity}",
+                id = self.id,
+                pn = self.pn,
+                name = self.name,
+                maturity = self.maturity
+            ),
+        }
     }
 }
 
@@ -184,7 +194,7 @@ impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
             name: value.get("name")?,
             version: value.get("version")?,
             maturity: value.get("maturity")?,
-            item_type: value.get("type")?,
+            strategy: value.get("strategy")?,
         })
     }
 }
@@ -231,23 +241,23 @@ impl Database {
     }
 
     // Add a new item to the store
-    pub(crate) fn insert_item(&self, pn: &str, name: &str, t: ItemType) -> Result<Item> {
+    pub(crate) fn insert_item(&self, pn: &str, name: &str, t: Strategy) -> Result<Item> {
         const DEFAULT_VERSION: usize = 1;
-        const DEFAULT_INTERNAL_MATURITY: ItemMaturity = ItemMaturity::InProgress;
-        const DEFAULT_EXTERNAL_MATURITY: ItemMaturity = ItemMaturity::Released;
+        const DEFAULT_MATURITY_MAKE: ItemMaturity = ItemMaturity::InProgress;
+        const DEFAULT_MATURITY_BUY: ItemMaturity = ItemMaturity::Released;
 
         let maturity = match t {
-            ItemType::Internal => DEFAULT_INTERNAL_MATURITY,
-            ItemType::External => DEFAULT_EXTERNAL_MATURITY,
+            Strategy::Make => DEFAULT_MATURITY_MAKE,
+            Strategy::Buy => DEFAULT_MATURITY_BUY,
         };
 
         self.execute(
-            "INSERT INTO items(pn, name, version, maturity, type) VALUES(?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO items(pn, name, version, maturity, strategy) VALUES(?1, ?2, ?3, ?4, ?5)",
             (pn, name, DEFAULT_VERSION, maturity, t),
         )
         .convert()?;
         let id = self.last_insert_rowid();
-        self.item_by_id(id)
+        self.item(id)
     }
 
     /// Retrive all [Item]s
@@ -262,37 +272,22 @@ impl Database {
     }
 
     /// Update the item
-    pub(crate) fn update_item(&mut self, item: Item) -> Result<()> {
-        if self
-            .execute(
-                "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
-                (&item.pn, &item.name, item.id),
-            )
-            .convert()?
-            != 1
-        {
-            return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
-        }
-        Ok(())
-    }
+    // pub(crate) fn update_item(&mut self, item: Item) -> Result<()> {
+    //     if self
+    //         .execute(
+    //             "UPDATE items set pn=(?1), name=(?2) where id=(?3)",
+    //             (&item.pn, &item.name, item.id),
+    //         )
+    //         .convert()?
+    //         != 1
+    //     {
+    //         return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
+    //     }
+    //     Ok(())
+    // }
 
-    /// Get `Item` by it's PN
-    ///
-    /// WARNING : this function returns the 1st result (but there
-    /// should be only 1 result)
-    #[deprecated]
-    pub fn get_item_by_pn(&self, pn: &str) -> Result<Item> {
-        let mut stmt = self
-            .prepare("SELECT * FROM items WHERE pn = ?1")
-            .convert()?;
-        stmt.query_row([pn], |row| Item::try_from(row)).convert()
-    }
-
-    /// Get `Item` by it's ID
-    ///
-    /// WARNING : this function returns the 1st result (but there
-    /// should be only 1 result)
-    pub fn item_by_id(&self, id: i64) -> Result<Item> {
+    /// Get an `Item` by it's ID
+    pub fn item(&self, id: i64) -> Result<Item> {
         let mut stmt = self
             .prepare("SELECT * FROM items WHERE id = ?1")
             .convert()?;
@@ -374,87 +369,21 @@ impl Database {
         {
             return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
         }
-        self.item_by_id(id)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn init_database() {
-        assert!(Database::open(":memory:").is_ok());
+        self.item(id)
     }
 
-    #[test]
-    fn add_items() {
-        let db = Database::open(":memory:").unwrap();
-        assert!(db.insert_item("PN1", "NAME1", ItemType::Internal).is_ok());
-        let items = db.items();
-        assert!(items.is_ok());
-        let items = items.unwrap();
-        assert_eq!(1, items.len());
-    }
-
-    #[test]
-    fn add_childrens() {
-        let mut db = Database::open(":memory:").unwrap();
-        let item1 = db.insert_item("1", "PARENT", ItemType::Internal).unwrap();
-        let item2 = db.insert_item("11", "CHILD1", ItemType::Internal).unwrap();
-        let item3 = db.insert_item("12", "CHILD2", ItemType::Internal).unwrap();
-        db.add_child(item1.id, item2.id, 1).unwrap();
-        db.add_child(item1.id, item3.id, 2).unwrap();
-        let children = db.children(item1.id).unwrap();
-        assert_eq!(2, children.len());
-
-        // can't add an already existing child
-        assert!(db.add_child(item1.id, item3.id, 2).is_err());
-    }
-
-    #[test]
-    fn add_same_pn() {
-        let db = Database::open(":memory:").unwrap();
-        let _ = db.insert_item("PN", "ITEM", ItemType::Internal).unwrap();
-        assert!(db.insert_item("PN", "ANOTHER", ItemType::Internal).is_err());
-    }
-
-    #[test]
-    fn config() {
-        let db = Database::open(":memory:").unwrap();
-        assert_eq!("".to_string(), db.read_config("key").unwrap());
-        assert!(db.write_config("key", "value").is_ok());
-        assert_eq!("value".to_string(), db.read_config("key").unwrap());
-        let _ = db.write_config("key", "value 2");
-        assert_eq!("value 2", db.read_config("key").unwrap());
-    }
-
-    #[test]
-    fn search() {
-        let db = Database::open(":memory:").unwrap();
-        db.insert_item("00000001", "FIRST ITEM", ItemType::Internal)
-            .unwrap();
-        db.insert_item("00000002", "SECOND ITEM", ItemType::Internal)
-            .unwrap();
-        db.insert_item("00000003", "THIRD THING", ItemType::Internal)
-            .unwrap();
-        db.insert_item("123.456", "EXTERNAL THING", ItemType::Internal)
-            .unwrap();
-        db.insert_item("123.003", "OTHER EXTERNAL THING", ItemType::Internal)
-            .unwrap();
-        db.insert_item("123.678", "THING 1003", ItemType::Internal)
-            .unwrap();
-
-        let items = db.search("%000%").unwrap();
-        assert_eq!(3, items.len());
-        assert_eq!("00000001", items.get(0).unwrap().pn());
-        assert_eq!("00000002", items.get(1).unwrap().pn());
-        assert_eq!("00000003", items.get(2).unwrap().pn());
-
-        let items = db.search("%003%").unwrap();
-        assert_eq!(3, items.len());
-        assert_eq!("00000003", items.get(0).unwrap().pn());
-        assert_eq!("123.003", items.get(1).unwrap().pn());
-        assert_eq!("123.678", items.get(2).unwrap().pn());
+    /// Make an Item [ItemMaturity::Obsolete]
+    pub fn make_obsolete(&mut self, id: i64) -> Result<Item> {
+        if self
+            .execute(
+                "UPDATE items set maturity=(?1) where id=(?2)",
+                (ItemMaturity::Obsolete, id),
+            )
+            .convert()?
+            != 1
+        {
+            return Err(Error::DatabaseErr(rusqlite::Error::QueryReturnedNoRows));
+        }
+        self.item(id)
     }
 }

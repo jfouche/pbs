@@ -1,8 +1,6 @@
 use std::io::{self, Write};
 
-use parser::{
-    AddChildParams, CreateParams, ImportParams, StockParams, TreeParams, WhereUsedParams,
-};
+use parser::{AddChildParams, BuyParams, MakeParams, StockParams, TreeParams, WhereUsedParams};
 use pbs_core::{Result, Store};
 
 use crate::parser::{get_command, Command};
@@ -14,11 +12,12 @@ const STORE_URI: &str = "store.db3";
 const COMMANDS: &str = r#"
  - help                                           This help
  - exit                                           Exit the pbs CLI
- - add <PART_NUMBER> <NAME>                       Add a item to the store
+ - make <NAME>                                    Create a "make" item, allocating a PN
+ - buy <PART_NUMBER> <NAME>                       Import a "buy" item, with it's external PN
  - list                                           List all items in the store
- - add-child <PARENT_PN> <CHILD_PN> <QUANTITY>    Add a child item to an parent item
- - tree <PN>                                      Show the children of an item
- - where-used <PN>                                Show all items where the given <PN> is used"#;
+ - add-child <PARENT_ID> <CHILD_ID> <QUANTITY>    Add a child item to an parent item
+ - tree <ID>                                      Show the children of an item
+ - where-used <ID>                                Show all items where the given <PN> is used"#;
 
 struct PbsCli {
     store: Store,
@@ -41,8 +40,8 @@ impl PbsCli {
 
     fn handle_cmd(&mut self, cmd: Command) {
         match cmd {
-            Command::Create(params) => self.handle_create(params),
-            Command::Import(params) => self.handle_import(params),
+            Command::Make(params) => self.handle_create(params),
+            Command::Buy(params) => self.handle_import(params),
             Command::List => self.handle_list(),
             Command::AddChild(params) => self.handle_add_child(params),
             Command::Tree(params) => self.handle_tree(params),
@@ -52,15 +51,15 @@ impl PbsCli {
         }
     }
 
-    fn handle_create(&mut self, params: CreateParams) {
-        match self.store.create_item(&params.name) {
+    fn handle_create(&mut self, params: MakeParams) {
+        match self.store.make_item(&params.name) {
             Ok(item) => println!("  created {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }
     }
 
-    fn handle_import(&mut self, params: ImportParams) {
-        match self.store.import_item(&params.pn, &params.name) {
+    fn handle_import(&mut self, params: BuyParams) {
+        match self.store.buy_item(&params.pn, &params.name) {
             Ok(item) => println!("  added {item}"),
             Err(e) => eprintln!("ERROR : {:?}", e),
         }

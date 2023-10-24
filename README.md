@@ -23,12 +23,12 @@ cargo run
 
 # pbs-cli commands
 
-## Create new item :  `create <name>`
+## Create new item :  `make <name>`
 Create a new item in the store where :
 - `<name>` is a name or label of the item  
 A part number will be auto-generated
 
-## Import existing item :  `import <pn> <name>`
+## Import existing item :  `buy <pn> <name>`
 Import an item to the store where :
 - `<pn>` is the part number of the item (its reference)
 - `<name>` is a name or label of the item  
@@ -42,18 +42,18 @@ Add a child to an item where :
 # Example
 
 ```
-import L289651 chair
-import 305.294.67 table
-create room
-add-child 000001  L289651    25
-add-child 000001  305.294.67 25
-create kitchen
-create restaurant
-add-child 000020 L289651     80
-add-child 000020 305.294.67  80
-add 000100 School
-add-child 000100 000001 7
-add-child 000100 000010 1
-add-child 000100 000020 1
+buy L289651 chair
+buy 305.294.67 table
+make room
+add-child 3  1  25
+add-child 3  2  25
+make kitchen
+make restaurant
+add-child 5  1  80
+add-child 5  2  80
+make School
+add-child 6 3  7
+add-child 6 4  1
+add-child 6 5  2
 ```
 
