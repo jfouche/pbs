@@ -21,7 +21,7 @@ cargo run
 ```
 
 
-# pbs-cli commands
+# pbs-repl commands
 
 ## Create a new item :  `item make <name>`
 Create a new item in the store where :

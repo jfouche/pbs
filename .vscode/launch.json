@@ -26,15 +26,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'pbs_cli'",
+            "name": "Debug executable 'pbs_repl'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=pbs_cli",
-                    "--package=pbs_cli"
+                    "--bin=pbs_repl",
+                    "--package=pbs_repl"
                 ],
                 "filter": {
-                    "name": "pbs_cli",
+                    "name": "pbs_repl",
                     "kind": "bin"
                 }
             },
@@ -44,16 +44,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'pbs_cli'",
+            "name": "Debug unit tests in executable 'pbs_repl'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=pbs_cli",
-                    "--package=pbs_cli"
+                    "--bin=pbs_repl",
+                    "--package=pbs_repl"
                 ],
                 "filter": {
-                    "name": "pbs_cli",
+                    "name": "pbs_repl",
                     "kind": "bin"
                 }
             },

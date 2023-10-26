@@ -14,7 +14,7 @@ const STORE_URI: &str = "store.db3";
 
 const COMMANDS: &str = r#"
  - help                                           This help
- - exit                                           Exit the pbs CLI
+ - exit                                           Exit the pbs REPL
  - item make <NAME>                               Create a "make" item, allocating a PN
  - item buy <PART_NUMBER> <NAME>                  Create a "Buy" item, with it's external PN
  - list                                           List all items in the store
@@ -23,13 +23,13 @@ const COMMANDS: &str = r#"
  - tree <ID>                                      Show the children of an item
  - where-used <ID>                                Show all items where the given <PN> is used"#;
 
-struct PbsCli {
+struct PbsRepl {
     store: Store,
 }
 
-impl PbsCli {
+impl PbsRepl {
     fn new() -> Result<Self> {
-        Ok(PbsCli {
+        Ok(PbsRepl {
             store: Store::open(STORE_URI)?,
         })
     }
@@ -147,14 +147,14 @@ impl PbsCli {
 }
 
 fn main() -> Result<()> {
-    let mut pbs_cli = PbsCli::new()?;
+    let mut pbs_repl = PbsRepl::new()?;
     loop {
-        match pbs_cli.prompt() {
+        match pbs_repl.prompt() {
             Ok(input) => match get_command(&input) {
                 Ok(cmd) => match cmd {
                     Command::Exit => break,
-                    Command::Help => println!("PBS CLI commands: {}", COMMANDS),
-                    command => pbs_cli.handle_cmd(command),
+                    Command::Help => println!("PBS REPL commands: {}", COMMANDS),
+                    command => pbs_repl.handle_cmd(command),
                 },
                 Err(err) => eprintln!("ERROR : {}", err),
             },
