@@ -1,4 +1,4 @@
-use pbs_srv::{Item, NewItem};
+use pbs_srv::{Item, ItemMake};
 
 pub static BASE_API_URL: &str = "http://localhost:3030";
 
@@ -10,7 +10,7 @@ pub async fn search_items(pattern: &str) -> Result<Vec<Item>, reqwest::Error> {
 
 pub async fn new_item(name: &str) -> Result<Item, reqwest::Error> {
     let url = format!("{BASE_API_URL}/item");
-    let new_item = NewItem {
+    let new_item = ItemMake {
         name: name.to_string(),
     };
     let client = reqwest::Client::new();

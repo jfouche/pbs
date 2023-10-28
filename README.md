@@ -63,5 +63,17 @@ child add 6 5  2
 tree 6
 ```
 
+# pbs_srv API
 
+## POST `/item/make`
+
+## POST `/item/buy`
+
+## GET  `/item/:id`
+
+## GET  `/item/:id/children`
+
+## GET  `/list`
+
+## GET  `/search?pattern=<pattern>`
 

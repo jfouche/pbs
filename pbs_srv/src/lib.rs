@@ -7,10 +7,7 @@ use axum::{
 };
 pub use pbs_core::{Item, Store};
 use serde::{Deserialize, Serialize};
-use std::{
-    net::SocketAddr,
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
-};
+use std::{net::SocketAddr, sync::Arc};
 use tracing::info;
 
 pub enum Error {
@@ -32,35 +29,26 @@ impl IntoResponse for Error {
 
 #[derive(Clone)]
 struct AppState {
-    store: Arc<RwLock<Store>>,
-}
-
-impl AppState {
-    fn store(&self) -> Result<RwLockReadGuard<Store>> {
-        self.store.read().map_err(|_| Error::StateError)
-    }
-
-    fn mut_store(&self) -> Result<RwLockWriteGuard<Store>> {
-        self.store.write().map_err(|_| Error::StateError)
-    }
+    store: Arc<Store>,
 }
 
 pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
     info!("pbs_srv::serve({port})");
 
     let store_state = AppState {
-        store: Arc::new(RwLock::new(Store::open("store.db3")?)),
+        store: Arc::new(Store::open("store.db3")?),
     };
 
     let app = Router::new()
-        // .route("/", get(root))
+        .route("/item/make", post(item_make))
+        .route("/item/buy", post(item_buy))
         .route("/item/:id", get(get_item))
+        .route("/item/:id/children", get(get_item_children))
+        .route("/list", get(list))
         .route("/search", get(search))
-        .route("/item", post(new_item))
         .with_state(store_state);
 
     // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
@@ -68,6 +56,15 @@ pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
         .unwrap();
 
     Ok(())
+}
+
+async fn list(State(state): State<AppState>) -> impl IntoResponse {
+    info!("list()");
+    state
+        .store
+        .items()
+        .map_err(|_e| Error::StoreError)
+        .map(Json)
 }
 
 #[derive(Deserialize)]
@@ -80,31 +77,65 @@ struct SearchResult(Vec<Item>);
 
 async fn search(State(state): State<AppState>, Query(query): Query<Pattern>) -> impl IntoResponse {
     info!("search({})", query.pattern);
-    match state.store.read().unwrap().search_items(&query.pattern) {
-        Ok(items) => Json(items),
-        Err(_e) => Json(vec![]),
-    }
+    state
+        .store
+        .search_items(&query.pattern)
+        .map_err(|_e| Error::StoreError)
+        .map(Json)
 }
 
-async fn get_item(State(state): State<AppState>, Path(id): Path<i64>) -> Result<Json<Item>> {
+async fn get_item(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {
     info!("get_item({id})");
-    let item = state.store()?.item(id).map_err(|_e| Error::StoreError)?;
-    Ok(Json(item))
+    state
+        .store
+        .item(id)
+        .map_err(|_e| Error::StoreError)
+        .map(Json)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct NewItem {
+pub struct ItemMake {
     pub name: String,
 }
 
-async fn new_item(
+async fn item_make(
     State(state): State<AppState>,
-    Json(new_item): Json<NewItem>,
+    Json(new_item): Json<ItemMake>,
 ) -> Result<Json<Item>> {
-    info!("pbs_srv::new_item({new_item:?})");
-    let item = state
-        .mut_store()?
+    info!("pbs_srv::item_make({new_item:?})");
+    state
+        .store
         .make_item(&new_item.name)
-        .map_err(|_e| Error::StoreError)?;
-    Ok(Json(item))
+        .map_err(|_e| Error::StoreError)
+        .map(Json)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ItemBuy {
+    pub pn: String,
+    pub name: String,
+}
+
+async fn item_buy(
+    State(state): State<AppState>,
+    Json(new_item): Json<ItemBuy>,
+) -> Result<Json<Item>> {
+    info!("pbs_srv::item_buy({new_item:?})");
+    state
+        .store
+        .buy_item(&new_item.pn, &new_item.name)
+        .map_err(|_e| Error::StoreError)
+        .map(Json)
+}
+
+async fn get_item_children(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> impl IntoResponse {
+    info!("pbs_srv::get_item_children({id})");
+    state
+        .store
+        .children(id)
+        .map_err(|_e| Error::StoreError)
+        .map(Json)
 }
