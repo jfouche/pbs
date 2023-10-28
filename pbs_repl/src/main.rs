@@ -43,7 +43,7 @@ impl PbsRepl {
     }
 
     fn handle_cmd(&mut self, cmd: Command) {
-        match cmd {
+        if let Err(e) = match cmd {
             Command::ItemMake(params) => self.handle_item_make(params),
             Command::ItemBuy(params) => self.handle_item_buy(params),
             Command::ItemRelease(params) => self.handle_item_release(params),
@@ -53,96 +53,71 @@ impl PbsRepl {
             Command::Tree(params) => self.handle_tree(params),
             Command::WhereUsed(params) => self.handle_where_used(params),
             Command::Stock(params) => self.handle_stock(params),
-            Command::Exit | Command::Help => {}
+            Command::Exit | Command::Help => Ok(()),
+        } {
+            eprintln!("ERROR : {:?}", e)
         }
     }
 
-    fn handle_item_make(&mut self, params: ItemMakeParams) {
-        match self.store.make_item(&params.name) {
-            Ok(item) => println!("  ADDED {item}"),
-            Err(e) => eprintln!("ERROR : {:?}", e),
-        }
+    fn handle_item_make(&mut self, params: ItemMakeParams) -> Result<()> {
+        let item = self.store.make_item(&params.name)?;
+        println!("  ADDED {item}");
+        Ok(())
     }
 
-    fn handle_item_buy(&mut self, params: ItemBuyParams) {
-        match self.store.buy_item(&params.pn, &params.name) {
-            Ok(item) => println!("  ADDED {item}"),
-            Err(e) => eprintln!("ERROR : {:?}", e),
-        }
+    fn handle_item_buy(&mut self, params: ItemBuyParams) -> Result<()> {
+        let item = self.store.buy_item(&params.pn, &params.name)?;
+        println!("  ADDED {item}");
+        Ok(())
     }
 
-    fn handle_item_release(&mut self, params: ItemReleaseParams) {
-        match self.store.release(params.id) {
-            Ok(item) => println!("  RELEASED : {item}"),
-            Err(e) => eprintln!("ERROR : {:?}", e),
-        }
+    fn handle_item_release(&mut self, params: ItemReleaseParams) -> Result<()> {
+        let item = self.store.release(params.id)?;
+        println!("  RELEASED : {item}");
+        Ok(())
     }
 
-    fn handle_list(&self) {
-        match self.store.items() {
-            Ok(items) => {
-                for item in items {
-                    println!("  - {item}");
-                }
-            }
-            Err(e) => eprintln!("ERROR : {:?}", e),
+    fn handle_list(&self) -> Result<()> {
+        for item in self.store.items()? {
+            println!("  - {item}");
         }
+        Ok(())
     }
 
-    fn handle_child_add(&mut self, params: ChildAddParams) {
-        if let Err(e) = self
-            .store
+    fn handle_child_add(&mut self, params: ChildAddParams) -> Result<()> {
+        self.store
             .add_child(params.parent_id, params.child_id, params.quantity)
-        {
-            eprintln!("ERROR: {:?}", e);
-        }
     }
 
-    fn handle_child_del(&mut self, params: ChildDelParams) {
-        if let Err(e) = self.store.remove_child(params.parent_id, params.child_id) {
-            eprintln!("ERROR: {:?}", e);
-        }
+    fn handle_child_del(&mut self, params: ChildDelParams) -> Result<()> {
+        self.store.remove_child(params.parent_id, params.child_id)
     }
 
-    fn handle_tree(&self, params: TreeParams) {
-        match self.store.item(params.id) {
-            Ok(parent) => match self.store.children(params.id) {
-                Ok(children) => {
-                    println!("{parent} childrens :");
-                    for (item, quantity) in children {
-                        println!("  - {item} : {quantity}");
-                    }
-                }
-                Err(e) => eprintln!("ERROR : {:?}", e),
-            },
-            Err(e) => eprintln!("ERROR : {:?}", e),
+    fn handle_tree(&self, params: TreeParams) -> Result<()> {
+        let parent = self.store.item(params.id)?;
+        let children = self.store.children(params.id)?;
+        println!("{parent} childrens :");
+        for (item, quantity) in children {
+            println!("  - {item} : {quantity}");
         }
+        Ok(())
     }
 
-    fn handle_where_used(&self, params: WhereUsedParams) {
-        match self.store.item(params.id) {
-            Ok(child) => match self.store.where_used(params.id) {
-                Ok(parents) => {
-                    println!("{child} parents :");
-                    for item in parents {
-                        println!("  - {item}");
-                    }
-                }
-                Err(e) => eprintln!("ERROR : {:?}", e),
-            },
-            Err(e) => eprintln!("ERROR : {:?}", e),
+    fn handle_where_used(&self, params: WhereUsedParams) -> Result<()> {
+        let child = self.store.item(params.id)?;
+        let parents = self.store.where_used(params.id)?;
+        println!("{child} parents :");
+        for item in parents {
+            println!("  - {item}");
         }
+        Ok(())
     }
 
-    fn handle_stock(&self, params: StockParams) {
-        match self.store.stock(params.id) {
-            Ok(items) => {
-                for (item, quantity) in items {
-                    println!("  - {item} : {quantity}");
-                }
-            }
-            Err(e) => eprintln!("ERROR : {:?}", e),
+    fn handle_stock(&self, params: StockParams) -> Result<()> {
+        for (item, quantity) in self.store.stock(params.id)? {
+            println!("  - {item} : {quantity}");
         }
+        Ok(())
     }
 }
 
