@@ -1,5 +1,5 @@
 mod db {
-    use crate::{Database, ItemMaturity, Strategy};
+    use crate::{Database, Strategy};
 
     #[test]
     fn init_database() {
