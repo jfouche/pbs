@@ -4,25 +4,24 @@ use futures_util::StreamExt;
 
 pub fn page_new_item(cx: Scope) -> Element {
     cx.render(rsx! {
-        new_item {}
-        import_cots {}
+        make_item {}
+        buy_item {}
     })
 }
 
-fn new_item(cx: Scope) -> Element {
+fn make_item(cx: Scope) -> Element {
     let name = use_state(cx, || "".to_string());
     let message = use_state(cx, || "".to_string());
 
-    let new_item_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
+    let make_item_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
         to_owned![message];
         async move {
             while let Some(name) = rx.next().await {
-                let result = client::new_item(&name).await;
-                let msg = match result {
-                    Ok(item) => format!("Item [{}] created", item.pn()),
+                let msg = match client::item_make(&name).await {
+                    Ok(item) => format!("Item MAKE [{}] created", item.pn()),
                     Err(e) => format!("ERROR : {e:?}"),
                 };
-                message.set(format!("[[{name}]] : {msg}"));
+                message.set(msg);
             }
         }
     });
@@ -41,7 +40,7 @@ fn new_item(cx: Scope) -> Element {
                 br {},
                 button {
                     onclick: move |_| {
-                        new_item_handler.send(name.get().to_owned())
+                        make_item_handler.send(name.get().to_owned())
                     }
                     , "Create"
                 }
@@ -51,9 +50,24 @@ fn new_item(cx: Scope) -> Element {
     })
 }
 
-fn import_cots(cx: Scope) -> Element {
-    let name = use_state(cx, || "".to_string());
+fn buy_item(cx: Scope) -> Element {
     let pn = use_state(cx, || "".to_string());
+    let name = use_state(cx, || "".to_string());
+    let message = use_state(cx, || "".to_string());
+
+    let buy_item_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<(String, String)>| {
+        to_owned![message];
+        async move {
+            while let Some((pn, name)) = rx.next().await {
+                let msg = match client::item_buy(&pn, &name).await {
+                    Ok(_) => "Item BUY created".to_string(),
+                    Err(e) => format!("ERROR : {e:?}"),
+                };
+                message.set(msg);
+            }
+        }
+    });
+
     cx.render(rsx! {
         div {
             fieldset {
@@ -64,7 +78,9 @@ fn import_cots(cx: Scope) -> Element {
                 label { r#for: "name", "Name" }
                 input { name: "cots_pn", "value": "{pn}" }
                 br {},
-                button { r#type: "button", "Create" }
+                button { onclick: move |_| {
+                    buy_item_handler.send((pn.get().to_owned(), name.get().to_owned()))
+                }, "Create" }
             },
             p { "MESSAGE" }
         }

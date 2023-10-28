@@ -4,7 +4,7 @@ use futures_util::StreamExt;
 use pbs_srv::Item;
 
 pub fn page_search(cx: Scope) -> Element {
-    let results: &UseState<Option<Vec<Item>>> = use_state(cx, || None);
+    let results: &UseState<Vec<Item>> = use_state(cx, Vec::new);
     let message = use_state(cx, || "".to_string());
 
     let search_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
@@ -15,10 +15,10 @@ pub fn page_search(cx: Scope) -> Element {
                 match result {
                     Ok(items) => {
                         message.set(format!("FOUND {} items", items.len()));
-                        results.set(Some(items));
+                        results.set(items);
                     }
                     Err(e) => {
-                        results.set(None);
+                        results.set(vec![]);
                         message.set(format!("ERROR : {e:?}"))
                     }
                 }
@@ -39,9 +39,9 @@ pub fn page_search(cx: Scope) -> Element {
             onmounted: move |evt| {evt.data.set_focus(true);},
         }
 
-        match results.get() {
-            Some(v) => rsx!( search_results { items: v } ),
-            None => rsx!( tr { td { "collspan": 5, "Enter pattern" } } )
+        match results.len() {
+            0 => rsx!( tr { td { "collspan": 5, "Enter pattern" } } ),
+            _ => rsx!( search_results { items: results } ),
         }
         div { "{message}"}
     })
