@@ -3,15 +3,15 @@ use dioxus::prelude::*;
 use futures_util::StreamExt;
 
 pub fn page_new_item(cx: Scope) -> Element {
-    cx.render(rsx! {
+    render! {
         make_item {}
         buy_item {}
-    })
+    }
 }
 
 fn make_item(cx: Scope) -> Element {
-    let name = use_state(cx, || "".to_string());
-    let message = use_state(cx, || "".to_string());
+    let name = use_state(cx, String::new);
+    let message = use_state(cx, String::new);
 
     let make_item_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
         to_owned![message];
@@ -51,9 +51,9 @@ fn make_item(cx: Scope) -> Element {
 }
 
 fn buy_item(cx: Scope) -> Element {
-    let pn = use_state(cx, || "".to_string());
-    let name = use_state(cx, || "".to_string());
-    let message = use_state(cx, || "".to_string());
+    let pn = use_state(cx, String::new);
+    let name = use_state(cx, String::new);
+    let message = use_state(cx, String::new);
 
     let buy_item_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<(String, String)>| {
         to_owned![message];
@@ -68,7 +68,7 @@ fn buy_item(cx: Scope) -> Element {
         }
     });
 
-    cx.render(rsx! {
+    render! {
         div {
             fieldset {
                 legend { "Import COTS" }
@@ -84,5 +84,5 @@ fn buy_item(cx: Scope) -> Element {
             },
             p { "MESSAGE" }
         }
-    })
+    }
 }

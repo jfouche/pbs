@@ -8,7 +8,6 @@ pub fn top_menu(cx: Scope) -> Element {
             id: "top-menu",
             menu_item { title: "New item", page: Page::NewItem}
             menu_item { title: "Search item", page: Page::SearchItems}
-            menu_item { title: "View item", page: Page::ViewItem}
         }
     )
 }

@@ -5,14 +5,13 @@ use pbs_srv::Item;
 
 pub fn page_search(cx: Scope) -> Element {
     let results: &UseState<Vec<Item>> = use_state(cx, Vec::new);
-    let message = use_state(cx, || "".to_string());
+    let message = use_state(cx, String::new);
 
     let search_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
         to_owned![message, results];
         async move {
             while let Some(pattern) = rx.next().await {
-                let result = client::search_items(&pattern).await;
-                match result {
+                match client::search_items(&pattern).await {
                     Ok(items) => {
                         message.set(format!("FOUND {} items", items.len()));
                         results.set(items);
@@ -26,7 +25,7 @@ pub fn page_search(cx: Scope) -> Element {
         }
     });
 
-    cx.render(rsx! {
+    render! {
         h2 { "Search item" },
         input {
             "value": "",
@@ -44,7 +43,7 @@ pub fn page_search(cx: Scope) -> Element {
             _ => rsx!( search_results { items: results } ),
         }
         div { "{message}"}
-    })
+    }
 }
 
 #[derive(Props)]
