@@ -1,6 +1,11 @@
 use dioxus::prelude::*;
 
-pub fn page_view_item(cx: Scope) -> Element {
+#[derive(Props, PartialEq)]
+pub struct ItemIdProps {
+    pub id: i64,
+}
+
+pub fn page_view_item(cx: Scope<ItemIdProps>) -> Element {
     render! {
         div {
             class: "tree",

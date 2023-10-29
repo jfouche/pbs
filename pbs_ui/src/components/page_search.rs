@@ -1,4 +1,4 @@
-use crate::client;
+use crate::{client, components::Page};
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 use pbs_srv::Item;
@@ -73,6 +73,9 @@ struct ItemRowProps<'a> {
 }
 
 fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
+    let current_page = use_shared_state::<Page>(cx).unwrap();
+    let id = cx.props.item.id();
+
     render!(
         tr {
             td { cx.props.item.name() },
@@ -81,7 +84,11 @@ fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
             td { cx.props.item.maturity().to_string() },
             td {
                 a {
-                "View"
+                    onclick: move |e| {
+                        *current_page.write() = Page::ViewItem(id);
+                        e.stop_propagation();
+                    },
+                    "View"
                 },
             }
         }

@@ -11,5 +11,5 @@ pub use app::app;
 enum Page {
     NewItem,
     SearchItems,
-    ViewItem,
+    ViewItem(i64),
 }

@@ -27,7 +27,7 @@ pub fn app(cx: Scope) -> Element {
                     match current_page {
                         Page::NewItem => rsx!( page_new_item { } ),
                         Page::SearchItems => rsx!( page_search { } ),
-                        Page::ViewItem => rsx!( page_view_item { } )
+                        Page::ViewItem(id) => rsx!( page_view_item { id: id } )
                     }
                 },
                 panel_history { },
