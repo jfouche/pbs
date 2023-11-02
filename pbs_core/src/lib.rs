@@ -3,7 +3,7 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-pub use database::{Database, Item, ItemMaturity, Strategy};
+pub use database::{Children, Database, Item, ItemMaturity, Strategy};
 pub use store::Store;
 
 #[derive(Debug, PartialEq)]

@@ -5,7 +5,7 @@ use axum::{
     routing::{get, post, Router},
     Json,
 };
-pub use pbs_core::{Item, Store};
+pub use pbs_core::{Children, Item, Store};
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, sync::Arc};
 use tracing::info;
@@ -15,7 +15,7 @@ pub enum Error {
     StateError,
 }
 
-type Result<T> = std::result::Result<T, Error>;
+// type Result<T> = std::result::Result<T, Error>;
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
@@ -101,7 +101,7 @@ pub struct ItemMake {
 async fn item_make(
     State(state): State<AppState>,
     Json(new_item): Json<ItemMake>,
-) -> Result<Json<Item>> {
+) -> impl IntoResponse {
     info!("pbs_srv::item_make({new_item:?})");
     state
         .store
@@ -119,7 +119,7 @@ pub struct ItemBuy {
 async fn item_buy(
     State(state): State<AppState>,
     Json(new_item): Json<ItemBuy>,
-) -> Result<Json<Item>> {
+) -> impl IntoResponse {
     info!("pbs_srv::item_buy({new_item:?})");
     state
         .store

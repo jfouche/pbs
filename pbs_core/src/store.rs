@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    database::{Database, ItemMaturity, Strategy},
+    database::{Children, Database, ItemMaturity, Strategy},
     Error, Item, Result,
 };
 
@@ -88,7 +88,7 @@ impl Store {
     }
 
     /// Get all items children
-    pub fn children(&self, id: i64) -> Result<Vec<(Item, usize)>> {
+    pub fn children(&self, id: i64) -> Result<Children> {
         self.db()?.children(id)
     }
 
@@ -98,11 +98,11 @@ impl Store {
     }
 
     /// Get all items and quantity that compose the given item
-    pub fn stock(&self, id: i64) -> Result<HashMap<Item, usize>> {
+    pub fn stock(&self, id: i64) -> Result<HashMap<i64, usize>> {
         let mut stock = HashMap::new();
-        for (child, quantity) in self.children(id)? {
+        for child in &self.children(id)? {
             stock.extend(self.stock(child.id())?);
-            *stock.entry(child).or_insert(0) += quantity;
+            *stock.entry(child.id()).or_insert(0) += child.quantity();
         }
         Ok(stock)
     }
@@ -134,11 +134,11 @@ impl Store {
     ///
     /// This function is recursive
     fn can_release(&self, id: i64) -> Result<bool> {
-        for child in self.db()?.children(id)? {
-            if child.0.maturity() != ItemMaturity::Released {
+        for child in &self.db()?.children(id)? {
+            if child.maturity() != ItemMaturity::Released {
                 return Ok(false);
             }
-            if !self.can_release(child.0.id())? {
+            if !self.can_release(child.id())? {
                 return Ok(false);
             }
         }

@@ -97,7 +97,9 @@ impl PbsRepl {
         let parent = self.store.item(params.id)?;
         let children = self.store.children(params.id)?;
         println!("{parent} childrens :");
-        for (item, quantity) in children {
+        for child in &children {
+            let item = child.item();
+            let quantity = child.quantity();
             println!("  - {item} : {quantity}");
         }
         Ok(())
