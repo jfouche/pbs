@@ -95,9 +95,8 @@ impl PbsRepl {
 
     fn handle_tree(&self, params: TreeParams) -> Result<()> {
         let parent = self.store.item(params.id)?;
-        let children = self.store.children(params.id)?;
         println!("{parent} childrens :");
-        for child in &children {
+        for child in &self.store.children(params.id)? {
             let item = child.item();
             let quantity = child.quantity();
             println!("  - {item} : {quantity}");
@@ -116,8 +115,12 @@ impl PbsRepl {
     }
 
     fn handle_stock(&self, params: StockParams) -> Result<()> {
-        for (item, quantity) in self.store.stock(params.id)? {
-            println!("  - {item} : {quantity}");
+        for child in &self.store.stock(params.id)? {
+            println!(
+                "  - {item} : {quantity}",
+                item = child.item(),
+                quantity = child.quantity()
+            );
         }
         Ok(())
     }

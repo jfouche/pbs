@@ -1,10 +1,13 @@
 use std::{
-    collections::HashMap,
+    collections::{hash_map, HashMap},
+    slice,
     sync::{RwLock, RwLockReadGuard},
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    database::{Children, Database, ItemMaturity, Strategy},
+    database::{Database, ItemMaturity, Strategy},
     Error, Item, Result,
 };
 
@@ -16,6 +19,124 @@ pub fn simple_8digits_pn_provider(db: &Database) -> Result<String> {
     Ok(new_pn)
 }
 
+// ==================================================================
+// Children
+// ==================================================================
+#[derive(Default, Serialize, Deserialize)]
+pub struct Children(Vec<(Item, usize)>);
+
+impl Children {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl<'a> IntoIterator for &'a Children {
+    type Item = Child<'a>;
+    type IntoIter = ChildIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ChildIter(self.0.iter())
+    }
+}
+
+pub struct ChildIter<'a>(slice::Iter<'a, (Item, usize)>);
+
+impl<'a> Iterator for ChildIter<'a> {
+    type Item = Child<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (child, quantity) = self.0.next()?;
+        Some(Child {
+            item: child,
+            quantity: *quantity,
+        })
+    }
+}
+
+pub struct Child<'a> {
+    pub item: &'a Item,
+    pub quantity: usize,
+}
+
+impl<'a> Child<'a> {
+    pub fn id(&self) -> i64 {
+        self.item.id()
+    }
+    pub fn name(&self) -> &'a str {
+        self.item.name()
+    }
+    pub fn pn(&self) -> &'a str {
+        self.item.pn()
+    }
+    pub fn maturity(&self) -> ItemMaturity {
+        self.item.maturity()
+    }
+    pub fn item(&self) -> &'a Item {
+        self.item
+    }
+    pub fn quantity(&self) -> usize {
+        self.quantity
+    }
+}
+
+// ==================================================================
+// Stock
+// ==================================================================
+pub struct Stock(HashMap<i64, (Item, usize)>);
+
+impl Stock {
+    fn new() -> Self {
+        Stock(HashMap::new())
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    fn add(&mut self, child: Child, other: Stock) {
+        self.0
+            .entry(child.id())
+            .or_insert((child.item().clone(), 0))
+            .1 += child.quantity();
+        self.0.extend(other.0);
+    }
+}
+
+impl<'a> IntoIterator for &'a Stock {
+    type Item = Child<'a>;
+    type IntoIter = StockIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        StockIter(self.0.iter())
+    }
+}
+
+pub struct StockIter<'a>(hash_map::Iter<'a, i64, (Item, usize)>);
+
+impl<'a> Iterator for StockIter<'a> {
+    type Item = Child<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (_, (item, quantity)) = self.0.next()?;
+        Some(Child {
+            item,
+            quantity: *quantity,
+        })
+    }
+}
+
+// ==================================================================
+// Store
+// ==================================================================
 pub struct Store {
     db: RwLock<Database>,
 }
@@ -89,7 +210,7 @@ impl Store {
 
     /// Get all items children
     pub fn children(&self, id: i64) -> Result<Children> {
-        self.db()?.children(id)
+        self.db()?.children(id).map(Children)
     }
 
     /// Get all parent items using the given item
@@ -98,11 +219,11 @@ impl Store {
     }
 
     /// Get all items and quantity that compose the given item
-    pub fn stock(&self, id: i64) -> Result<HashMap<i64, usize>> {
-        let mut stock = HashMap::new();
+    pub fn stock(&self, id: i64) -> Result<Stock> {
+        let mut stock = Stock::new();
         for child in &self.children(id)? {
-            stock.extend(self.stock(child.id())?);
-            *stock.entry(child.id()).or_insert(0) += child.quantity();
+            let child_id = child.id();
+            stock.add(child, self.stock(child_id)?);
         }
         Ok(stock)
     }
@@ -122,7 +243,7 @@ impl Store {
         let item = self.db()?.item(id)?;
         if item.strategy() != Strategy::Make || item.maturity() != ItemMaturity::InProgress {
             Err(Error::CantReleaseItem)
-        } else if self.can_release(id)? {
+        } else if self.children_can_release(id)? {
             let item = self.db()?.release(id)?;
             Ok(item)
         } else {
@@ -133,12 +254,12 @@ impl Store {
     /// Return true if all children are [ItemMaturity::Released]
     ///
     /// This function is recursive
-    fn can_release(&self, id: i64) -> Result<bool> {
-        for child in &self.db()?.children(id)? {
+    fn children_can_release(&self, id: i64) -> Result<bool> {
+        for child in &self.children(id)? {
             if child.maturity() != ItemMaturity::Released {
                 return Ok(false);
             }
-            if !self.can_release(child.id())? {
+            if !self.children_can_release(child.id())? {
                 return Ok(false);
             }
         }

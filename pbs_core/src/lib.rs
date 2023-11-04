@@ -3,8 +3,8 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-pub use database::{Children, Database, Item, ItemMaturity, Strategy};
-pub use store::Store;
+pub use database::{Database, Item, ItemMaturity, Strategy};
+pub use store::{Children, Stoke, Store};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {

@@ -191,71 +191,6 @@ impl<'stmt> TryFrom<&rusqlite::Row<'stmt>> for Item {
 }
 
 // ==================================================================
-// Children
-// ==================================================================
-#[derive(Default, Serialize, Deserialize)]
-pub struct Children(Vec<(Item, usize)>);
-
-impl Children {
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-impl<'a> IntoIterator for &'a Children {
-    type Item = Child<'a>;
-    type IntoIter = ChildIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        ChildIter(self.0.iter())
-    }
-}
-
-pub struct ChildIter<'a>(Iter<'a, (Item, usize)>);
-
-impl<'a> Iterator for ChildIter<'a> {
-    type Item = Child<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let (child, quantity) = self.0.next()?;
-        Some(Child {
-            item: child,
-            quantity: *quantity,
-        })
-    }
-}
-
-pub struct Child<'a> {
-    pub item: &'a Item,
-    pub quantity: usize,
-}
-
-impl<'a> Child<'a> {
-    pub fn id(&self) -> i64 {
-        self.item.id()
-    }
-    pub fn name(&self) -> &'a str {
-        self.item.name()
-    }
-    pub fn pn(&self) -> &'a str {
-        self.item.pn()
-    }
-    pub fn maturity(&self) -> ItemMaturity {
-        self.item.maturity()
-    }
-    pub fn item(&self) -> &'a Item {
-        self.item
-    }
-    pub fn quantity(&self) -> usize {
-        self.quantity
-    }
-}
-
-// ==================================================================
 // ErrConvert
 // ==================================================================
 trait ErrConvert<T> {
@@ -387,7 +322,7 @@ impl Database {
     }
 
     /// Get children of an item
-    pub(crate) fn children(&self, parent_id: i64) -> Result<Children> {
+    pub(crate) fn children(&self, parent_id: i64) -> Result<Vec<(Item, usize)>> {
         let mut stmt = self
             .prepare("SELECT * FROM view_children WHERE id_parent = ?1")
             .convert()?;
@@ -400,7 +335,7 @@ impl Database {
             .convert()?
             .filter_map(|i| i.ok())
             .collect::<Vec<_>>();
-        Ok(Children(items))
+        Ok(items)
     }
 
     ///
