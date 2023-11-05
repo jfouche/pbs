@@ -36,7 +36,7 @@ impl Children {
 }
 
 impl<'a> IntoIterator for &'a Children {
-    type Item = Child<'a>;
+    type Item = ChildRef<'a>;
     type IntoIter = ChildIter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -47,23 +47,23 @@ impl<'a> IntoIterator for &'a Children {
 pub struct ChildIter<'a>(slice::Iter<'a, (Item, usize)>);
 
 impl<'a> Iterator for ChildIter<'a> {
-    type Item = Child<'a>;
+    type Item = ChildRef<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (child, quantity) = self.0.next()?;
-        Some(Child {
+        Some(ChildRef {
             item: child,
             quantity: *quantity,
         })
     }
 }
 
-pub struct Child<'a> {
+pub struct ChildRef<'a> {
     pub item: &'a Item,
     pub quantity: usize,
 }
 
-impl<'a> Child<'a> {
+impl<'a> ChildRef<'a> {
     pub fn id(&self) -> i64 {
         self.item.id()
     }
@@ -81,6 +81,20 @@ impl<'a> Child<'a> {
     }
     pub fn quantity(&self) -> usize {
         self.quantity
+    }
+}
+
+pub struct Child {
+    pub item: Item,
+    pub quantity: usize,
+}
+
+impl<'a> From<ChildRef<'a>> for Child {
+    fn from(value: ChildRef<'a>) -> Self {
+        Child {
+            item: value.item.clone(),
+            quantity: value.quantity,
+        }
     }
 }
 
@@ -102,7 +116,7 @@ impl Stock {
         self.0.is_empty()
     }
 
-    fn add(&mut self, child: Child, other: Stock) {
+    fn add(&mut self, child: ChildRef, other: Stock) {
         self.0
             .entry(child.id())
             .or_insert((child.item().clone(), 0))
@@ -112,7 +126,7 @@ impl Stock {
 }
 
 impl<'a> IntoIterator for &'a Stock {
-    type Item = Child<'a>;
+    type Item = ChildRef<'a>;
     type IntoIter = StockIter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -123,11 +137,11 @@ impl<'a> IntoIterator for &'a Stock {
 pub struct StockIter<'a>(hash_map::Iter<'a, i64, (Item, usize)>);
 
 impl<'a> Iterator for StockIter<'a> {
-    type Item = Child<'a>;
+    type Item = ChildRef<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (_, (item, quantity)) = self.0.next()?;
-        Some(Child {
+        Some(ChildRef {
             item,
             quantity: *quantity,
         })

@@ -4,7 +4,6 @@ use rusqlite::{
     Connection, ToSql,
 };
 use serde::{Deserialize, Serialize};
-use std::slice::Iter;
 
 pub struct Database(Connection);
 
