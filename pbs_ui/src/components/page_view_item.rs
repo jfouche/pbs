@@ -11,7 +11,7 @@ pub struct ItemIdProps {
 
 pub fn page_view_item(cx: Scope<ItemIdProps>) -> Element {
     let item = use_ref(cx, || Option::<Item>::None);
-    let load_item_handler = load_item_handler(cx, item.to_owned());
+    let load_item_handler = use_load_item_handler(cx, item.to_owned());
 
     render! {
         div {
@@ -38,14 +38,11 @@ struct TreeItemProps {
 fn tree_item(cx: Scope<TreeItemProps>) -> Element {
     let is_open = use_ref(cx, || false);
     let children = use_ref(cx, Vec::<Child>::new);
-
-    // let children_ref = children.to_owned();
+    let load_children_handler = use_load_children_handler(cx, children.to_owned());
 
     let have_children = children.with(|c| c.is_empty());
     let open_text = is_open.with(|b| if *b { "-" } else { "+" });
     let show_children = have_children && *is_open.read();
-
-    let load_children_handler = load_children_handler(cx, children.to_owned());
 
     let id = cx.props.item.id();
     let pn = cx.props.item.pn();
@@ -85,23 +82,7 @@ fn tree_item(cx: Scope<TreeItemProps>) -> Element {
     }
 }
 
-// #[derive(Props, PartialEq)]
-// struct ChildrenProps {
-//     items: Vec<(Item, usize)>,
-// }
-
-// fn children_lines(cx: Scope<ChildrenProps>) -> Element {
-//     render! {
-//         cx.props.items.into_iter().map(|child| rsx! {
-//             tree_item {
-//                 item: child.0.clone(),
-//                 quantity: child.1
-//             }
-//         })
-//     }
-// }
-
-fn load_item_handler(cx: &ScopeState, item: UseRef<Option<Item>>) -> &Coroutine<i64> {
+fn use_load_item_handler(cx: &ScopeState, item: UseRef<Option<Item>>) -> &Coroutine<i64> {
     use_coroutine(cx, |mut rx: UnboundedReceiver<i64>| async move {
         while let Some(id) = rx.next().await {
             match client::item(id).await {
@@ -114,7 +95,7 @@ fn load_item_handler(cx: &ScopeState, item: UseRef<Option<Item>>) -> &Coroutine<
     })
 }
 
-fn load_children_handler(cx: &ScopeState, children: UseRef<Vec<Child>>) -> &Coroutine<i64> {
+fn use_load_children_handler(cx: &ScopeState, children: UseRef<Vec<Child>>) -> &Coroutine<i64> {
     use_coroutine(cx, |mut rx: UnboundedReceiver<i64>| async move {
         while let Some(id) = rx.next().await {
             match client::children(id).await {
@@ -122,7 +103,8 @@ fn load_children_handler(cx: &ScopeState, children: UseRef<Vec<Child>>) -> &Coro
                     println!("received children : {}", c.len());
                     children.set(c.into_iter().map(|c| c.into()).collect());
                 }
-                Err(_e) => {
+                Err(e) => {
+                    eprint!("ERROR : {e:?}");
                     todo!()
                 }
             }
