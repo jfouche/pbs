@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 
 use parser::{
-    ChildAddParams, ChildDelParams, ItemBuyParams, ItemMakeParams, ItemReleaseParams, StockParams,
+    ChildAddParams, ChildDelParams, ItemBuyParams, ItemMakeParams, ItemReleaseParams, ReportParams,
     TreeParams, WhereUsedParams,
 };
 use pbs_core::{Result, Store};
@@ -52,7 +52,7 @@ impl PbsRepl {
             Command::List => self.handle_list(),
             Command::Tree(params) => self.handle_tree(params),
             Command::WhereUsed(params) => self.handle_where_used(params),
-            Command::Stock(params) => self.handle_stock(params),
+            Command::Report(params) => self.handle_report(params),
             Command::Exit | Command::Help => Ok(()),
         } {
             eprintln!("ERROR : {:?}", e)
@@ -120,8 +120,8 @@ impl PbsRepl {
         Ok(())
     }
 
-    fn handle_stock(&self, params: StockParams) -> Result<()> {
-        for child in &self.store.stock(params.id)? {
+    fn handle_report(&self, params: ReportParams) -> Result<()> {
+        for child in &self.store.report(params.id)? {
             println!(
                 "  - {item} : {quantity}",
                 item = child.item(),

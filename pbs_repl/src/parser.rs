@@ -21,7 +21,7 @@ pub enum Command {
     List,
     Tree(TreeParams),
     WhereUsed(WhereUsedParams),
-    Stock(StockParams),
+    Report(ReportParams),
     Help,
     Exit,
 }
@@ -217,22 +217,22 @@ impl ParamsCmd for WhereUsedParams {
     }
 }
 
-/// Params for the `stock` command
+/// Params for the `report` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct StockParams {
+pub struct ReportParams {
     pub id: i64,
 }
 
-impl From<i64> for StockParams {
+impl From<i64> for ReportParams {
     fn from(value: i64) -> Self {
-        StockParams { id: value }
+        ReportParams { id: value }
     }
 }
 
-impl ParamsCmd for StockParams {
+impl ParamsCmd for ReportParams {
     fn cmd(self) -> Command {
-        Command::Stock(self)
+        Command::Report(self)
     }
 }
 
@@ -360,10 +360,10 @@ fn cmd_child_del(input: &str) -> IResult<&str, Command> {
     cmd("del", params)(input).cmd_n::<ChildDelParams>()
 }
 
-/// `stock <pn>`
-fn cmd_stock(input: &str) -> IResult<&str, Command> {
+/// `report <pn>`
+fn cmd_report(input: &str) -> IResult<&str, Command> {
     let params = param(id);
-    preceded(tag("stock"), params)(input).cmd_n::<StockParams>()
+    preceded(tag("report"), params)(input).cmd_n::<ReportParams>()
 }
 
 /// Get the command of the input
@@ -378,7 +378,7 @@ pub fn get_command(input: &str) -> Result<Command, nom::Err<nom::error::Error<&s
             cmd_help,
             cmd_exit,
             cmd_where_used,
-            cmd_stock,
+            cmd_report,
         )),
         eol,
     )(input)

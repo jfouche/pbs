@@ -4,7 +4,7 @@ mod store;
 mod tests;
 
 pub use database::{Database, Item, ItemMaturity, Strategy};
-pub use store::{Child, Children, Stock, Store};
+pub use store::{Child, Children, Report, Store};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {

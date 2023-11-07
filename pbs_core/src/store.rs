@@ -99,13 +99,13 @@ impl<'a> From<ChildRef<'a>> for Child {
 }
 
 // ==================================================================
-// Stock
+// Report
 // ==================================================================
-pub struct Stock(HashMap<i64, (Item, usize)>);
+pub struct Report(HashMap<i64, (Item, usize)>);
 
-impl Stock {
+impl Report {
     fn new() -> Self {
-        Stock(HashMap::new())
+        Report(HashMap::new())
     }
 
     pub fn len(&self) -> usize {
@@ -116,7 +116,7 @@ impl Stock {
         self.0.is_empty()
     }
 
-    fn add(&mut self, child: ChildRef, other: Stock) {
+    fn add(&mut self, child: ChildRef, other: Report) {
         self.0
             .entry(child.id())
             .or_insert((child.item().clone(), 0))
@@ -125,18 +125,18 @@ impl Stock {
     }
 }
 
-impl<'a> IntoIterator for &'a Stock {
+impl<'a> IntoIterator for &'a Report {
     type Item = ChildRef<'a>;
-    type IntoIter = StockIter<'a>;
+    type IntoIter = ReportIter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        StockIter(self.0.iter())
+        ReportIter(self.0.iter())
     }
 }
 
-pub struct StockIter<'a>(hash_map::Iter<'a, i64, (Item, usize)>);
+pub struct ReportIter<'a>(hash_map::Iter<'a, i64, (Item, usize)>);
 
-impl<'a> Iterator for StockIter<'a> {
+impl<'a> Iterator for ReportIter<'a> {
     type Item = ChildRef<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -233,13 +233,13 @@ impl Store {
     }
 
     /// Get all items and quantity that compose the given item
-    pub fn stock(&self, id: i64) -> Result<Stock> {
-        let mut stock = Stock::new();
+    pub fn report(&self, id: i64) -> Result<Report> {
+        let mut report = Report::new();
         for child in &self.children(id)? {
             let child_id = child.id();
-            stock.add(child, self.stock(child_id)?);
+            report.add(child, self.report(child_id)?);
         }
-        Ok(stock)
+        Ok(report)
     }
 
     /// Search for items matching pattern (pn or name)
