@@ -11,6 +11,7 @@ pub enum Error {
     DatabaseErr(rusqlite::Error),
     PoisonousDatabaseLock,
     CantReleaseItem,
+    CantUpgradeItem,
     CantAddChild,
     CantRemoveChild,
     CantMakeObsolete,

@@ -186,12 +186,12 @@ impl Store {
     pub fn make_item(&self, name: &str) -> Result<Item> {
         let db = self.db()?;
         let pn = simple_8digits_pn_provider(&db)?;
-        db.insert_item(&pn, name, Strategy::Make)
+        db.new_make_item(&pn, name)
     }
 
     /// Create a new [ItemType::Buy] [Item]
     pub fn buy_item(&self, pn: &str, name: &str) -> Result<Item> {
-        self.db()?.insert_item(pn, name, Strategy::Buy)
+        self.db()?.new_buy_item(pn, name)
     }
 
     /// Get all items
@@ -262,6 +262,16 @@ impl Store {
             Ok(item)
         } else {
             Err(Error::CantReleaseItem)
+        }
+    }
+
+    /// Create a new [ItemMaturity::InProgress] version of a [ItemMaturity::Released] item
+    pub fn upgrade(&self, id: i64) -> Result<Item> {
+        let item = self.db()?.item(id)?;
+        if item.strategy() != Strategy::Make || item.maturity() != ItemMaturity::Released {
+            Err(Error::CantUpgradeItem)
+        } else {
+            self.db()?.upgrade_item(item)
         }
     }
 

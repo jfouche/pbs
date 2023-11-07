@@ -1,8 +1,8 @@
 use std::io::{self, Write};
 
 use parser::{
-    ChildAddParams, ChildDelParams, ItemBuyParams, ItemMakeParams, ItemReleaseParams, ReportParams,
-    TreeParams, WhereUsedParams,
+    ChildAddParams, ChildDelParams, ItemBuyParams, ItemMakeParams, ItemReleaseParams,
+    ItemUpgradeParams, ReportParams, TreeParams, WhereUsedParams,
 };
 use pbs_core::{Result, Store};
 
@@ -17,6 +17,8 @@ const COMMANDS: &str = r#"
  - exit                                           Exit the pbs REPL
  - item make <NAME>                               Create a "make" item, allocating a PN
  - item buy <PART_NUMBER> <NAME>                  Create a "Buy" item, with it's external PN
+ - item release <ID>                              Set a [in progress] item maturity to [released]
+ - item upgrade <ID>                              Create a new version of an [released] item
  - list                                           List all items in the store
  - child add <PARENT_ID> <CHILD_ID> <QUANTITY>    Add a child item to an parent item
  - child del <PARENT_ID> <CHILD_ID>               Remove a child item from a parent item
@@ -47,6 +49,7 @@ impl PbsRepl {
             Command::ItemMake(params) => self.handle_item_make(params),
             Command::ItemBuy(params) => self.handle_item_buy(params),
             Command::ItemRelease(params) => self.handle_item_release(params),
+            Command::ItemUpgrade(params) => self.handle_item_upgrade(params),
             Command::ChildAdd(params) => self.handle_child_add(params),
             Command::ChildDel(params) => self.handle_child_del(params),
             Command::List => self.handle_list(),
@@ -74,6 +77,12 @@ impl PbsRepl {
     fn handle_item_release(&mut self, params: ItemReleaseParams) -> Result<()> {
         let item = self.store.release(params.id)?;
         println!("  RELEASED : {item}");
+        Ok(())
+    }
+
+    fn handle_item_upgrade(&mut self, params: ItemUpgradeParams) -> Result<()> {
+        let item = self.store.upgrade(params.id)?;
+        println!("  New item version : {item}");
         Ok(())
     }
 

@@ -1,5 +1,5 @@
 mod db {
-    use crate::{Database, Strategy};
+    use crate::Database;
 
     #[test]
     fn init_database() {
@@ -9,7 +9,7 @@ mod db {
     #[test]
     fn add_items() {
         let db = Database::open(":memory:").unwrap();
-        assert!(db.insert_item("PN1", "NAME1", Strategy::Make).is_ok());
+        assert!(db.new_make_item("PN1", "NAME1").is_ok());
         let items = db.items();
         assert!(items.is_ok());
         let items = items.unwrap();
@@ -19,9 +19,9 @@ mod db {
     #[test]
     fn add_childrens() {
         let db = Database::open(":memory:").unwrap();
-        let item1 = db.insert_item("1", "PARENT", Strategy::Make).unwrap();
-        let item2 = db.insert_item("11", "CHILD1", Strategy::Make).unwrap();
-        let item3 = db.insert_item("12", "CHILD2", Strategy::Make).unwrap();
+        let item1 = db.new_make_item("1", "PARENT").unwrap();
+        let item2 = db.new_make_item("11", "CHILD1").unwrap();
+        let item3 = db.new_make_item("12", "CHILD2").unwrap();
         db.add_child(item1.id(), item2.id(), 1).unwrap();
         db.add_child(item1.id(), item3.id(), 2).unwrap();
         let children = db.children(item1.id()).unwrap();
@@ -34,8 +34,8 @@ mod db {
     #[test]
     fn add_same_pn() {
         let db = Database::open(":memory:").unwrap();
-        let _ = db.insert_item("PN", "ITEM", Strategy::Make).unwrap();
-        assert!(db.insert_item("PN", "ANOTHER", Strategy::Make).is_err());
+        let _ = db.new_make_item("PN", "ITEM").unwrap();
+        assert!(db.new_make_item("PN", "ANOTHER").is_err());
     }
 
     #[test]
@@ -51,18 +51,12 @@ mod db {
     #[test]
     fn search() {
         let db = Database::open(":memory:").unwrap();
-        db.insert_item("00000001", "FIRST ITEM", Strategy::Make)
-            .unwrap();
-        db.insert_item("00000002", "SECOND ITEM", Strategy::Make)
-            .unwrap();
-        db.insert_item("00000003", "THIRD THING", Strategy::Make)
-            .unwrap();
-        db.insert_item("123.456", "BUY THING", Strategy::Make)
-            .unwrap();
-        db.insert_item("123.003", "OTHER BUY THING", Strategy::Make)
-            .unwrap();
-        db.insert_item("123.678", "THING 1003", Strategy::Make)
-            .unwrap();
+        db.new_make_item("00000001", "FIRST ITEM").unwrap();
+        db.new_make_item("00000002", "SECOND ITEM").unwrap();
+        db.new_make_item("00000003", "THIRD THING").unwrap();
+        db.new_make_item("123.456", "BUY THING").unwrap();
+        db.new_make_item("123.003", "OTHER BUY THING").unwrap();
+        db.new_make_item("123.678", "THING 1003").unwrap();
 
         let items = db.search("%000%").unwrap();
         assert_eq!(3, items.len());
@@ -82,13 +76,13 @@ mod db {
         let db = Database::open(":memory:").unwrap();
 
         // test unique PN / version
-        let res_1 = db.insert_item("PN", "NAME 1", Strategy::Buy);
+        let res_1 = db.new_buy_item("PN", "NAME 1");
         assert!(res_1.is_ok());
-        assert!(db.insert_item("PN", "NAME 2", Strategy::Buy).is_err());
+        assert!(db.new_buy_item("PN", "NAME 2").is_err());
 
         // test unique parent/child
         let item1 = res_1.unwrap();
-        let item2 = db.insert_item("PN2", "NAME 2", Strategy::Make).unwrap();
+        let item2 = db.new_make_item("PN2", "NAME 2").unwrap();
         assert!(db.add_child(item2.id(), item1.id(), 10).is_ok());
         assert!(db.add_child(item2.id(), item1.id(), 5).is_err());
     }

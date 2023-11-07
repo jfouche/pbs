@@ -237,23 +237,46 @@ impl Database {
     }
 
     // Add a new item to the store
-    pub(crate) fn insert_item(&self, pn: &str, name: &str, t: Strategy) -> Result<Item> {
-        const DEFAULT_VERSION: usize = 1;
-        const DEFAULT_MATURITY_MAKE: ItemMaturity = ItemMaturity::InProgress;
-        const DEFAULT_MATURITY_BUY: ItemMaturity = ItemMaturity::Released;
-
-        let maturity = match t {
-            Strategy::Make => DEFAULT_MATURITY_MAKE,
-            Strategy::Buy => DEFAULT_MATURITY_BUY,
+    pub(crate) fn insert_item(
+        &self,
+        pn: &str,
+        name: &str,
+        version: usize,
+        strategy: Strategy,
+    ) -> Result<Item> {
+        let maturity = match strategy {
+            Strategy::Make => ItemMaturity::InProgress,
+            Strategy::Buy => ItemMaturity::Released,
         };
 
         self.execute(
             "INSERT INTO items(pn, name, version, maturity, strategy) VALUES(?1, ?2, ?3, ?4, ?5)",
-            (pn, name, DEFAULT_VERSION, maturity, t),
+            (pn, name, version, maturity, strategy),
         )
         .convert()?;
         let id = self.last_insert_rowid();
         self.item(id)
+    }
+
+    /// Add a new [Strategy::Make] item to the store
+    pub(crate) fn new_make_item(&self, pn: &str, name: &str) -> Result<Item> {
+        self.insert_item(pn, name, 1, Strategy::Make)
+    }
+
+    /// Add a new [Strategy::Make] item to the store
+    pub(crate) fn new_buy_item(&self, pn: &str, name: &str) -> Result<Item> {
+        self.insert_item(pn, name, 1, Strategy::Buy)
+    }
+
+    /// create a new item with a version increment
+    ///
+    /// all children of the original item are also children af the new created item
+    pub(crate) fn upgrade_item(&self, item: Item) -> Result<Item> {
+        let new_item = self.insert_item(&item.pn, &item.name, item.version + 1, item.strategy)?;
+        for child in &self.children(item.id)? {
+            self.add_child(new_item.id, child.0.id, child.1)?;
+        }
+        Ok(new_item)
     }
 
     /// Retrive all [Item]s

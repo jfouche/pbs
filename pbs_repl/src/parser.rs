@@ -16,6 +16,7 @@ pub enum Command {
     ItemMake(ItemMakeParams),
     ItemBuy(ItemBuyParams),
     ItemRelease(ItemReleaseParams),
+    ItemUpgrade(ItemUpgradeParams),
     ChildAdd(ChildAddParams),
     ChildDel(ChildDelParams),
     List,
@@ -112,7 +113,7 @@ impl ParamsCmd for ItemBuyParams {
     }
 }
 
-/// Params for the `child add` command
+/// Params for the `item release` command
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct ItemReleaseParams {
@@ -128,6 +129,25 @@ impl From<i64> for ItemReleaseParams {
 impl ParamsCmd for ItemReleaseParams {
     fn cmd(self) -> Command {
         Command::ItemRelease(self)
+    }
+}
+
+/// Params for the `item upgrade` command
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct ItemUpgradeParams {
+    pub id: i64,
+}
+
+impl From<i64> for ItemUpgradeParams {
+    fn from(value: i64) -> Self {
+        ItemUpgradeParams { id: value }
+    }
+}
+
+impl ParamsCmd for ItemUpgradeParams {
+    fn cmd(self) -> Command {
+        Command::ItemUpgrade(self)
     }
 }
 
@@ -297,7 +317,12 @@ fn eol(input: &str) -> IResult<&str, ()> {
 // ====================================================================
 
 fn cmd_item(input: &str) -> IResult<&str, Command> {
-    let params = alt((cmd_item_make, cmd_item_buy, cmd_item_release));
+    let params = alt((
+        cmd_item_make,
+        cmd_item_buy,
+        cmd_item_release,
+        cmd_item_upgrade,
+    ));
     cmd("item", params)(input)
 }
 
@@ -314,6 +339,11 @@ fn cmd_item_buy(input: &str) -> IResult<&str, Command> {
 fn cmd_item_release(input: &str) -> IResult<&str, Command> {
     let params = param(id);
     cmd("release", params)(input).cmd_n::<ItemReleaseParams>()
+}
+
+fn cmd_item_upgrade(input: &str) -> IResult<&str, Command> {
+    let params = param(id);
+    cmd("upgrade", params)(input).cmd_n::<ItemUpgradeParams>()
 }
 
 /// `list`
