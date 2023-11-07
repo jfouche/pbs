@@ -11,7 +11,7 @@ This software helps to design a solution which integrates multiple items.
 ## Dev
 need `cargo` and `npm`
 ``` shell
-cargo install --git https://github.com/DioxusLabs/cli
+cargo install dioxus-cli
 npm install -D tailwindcss
 ```
 

@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
-use pbs_srv::{Child, Item};
+use pbs_srv::{Child, Item, ItemMaturity, Strategy};
 
 use crate::client;
 
@@ -43,11 +43,21 @@ fn tree_item(cx: Scope<TreeItemProps>) -> Element {
     let load_children_handler = use_load_children_handler(cx, children.to_owned());
 
     let id = cx.props.item.id();
-    let pn = cx.props.item.pn();
-    let name = cx.props.item.name();
-    let quantity = cx.props.quantity;
-
-    println!("tree_item#{id}");
+    let current_class = match children.read().as_ref() {
+        None => "caret",
+        Some(c) if c.is_empty() => "caret invisible",
+        _ => is_open.with(|b| if *b { "caret caret-down" } else { "caret" }),
+    };
+    let children_class = is_open.with(|b| if *b { "nested active" } else { "nested" });
+    let stategy_img_src = match cx.props.item.strategy() {
+        Strategy::Make => "pbs_ui/public/tools.svg",
+        Strategy::Buy => "pbs_ui/public/coin.svg",
+    };
+    let maturity_img_src = match cx.props.item.maturity() {
+        ItemMaturity::InProgress => "pbs_ui/public/pending.svg",
+        ItemMaturity::Released => "pbs_ui/public/release.svg",
+        ItemMaturity::Obsolete => "pbs_ui/public/obsolete.svg",
+    };
 
     let toggle = move || {
         is_open.with_mut(|b| *b = !*b);
@@ -56,19 +66,14 @@ fn tree_item(cx: Scope<TreeItemProps>) -> Element {
         }
     };
 
-    let current_class = match children.read().as_ref() {
-        None => "caret",
-        Some(c) if c.is_empty() => "caret invisible",
-        _ => is_open.with(|b| if *b { "caret caret-down" } else { "caret" }),
-    };
-    let children_class = is_open.with(|b| if *b { "nested active" } else { "nested" });
-
     render! {
         li {
             span {
                 class: current_class,
                 onclick: move |_| toggle(),
-                "{pn} - {name} | quantity : {quantity}",
+                item_display_quantity_str(&cx.props.item, cx.props.quantity),
+                img { src: stategy_img_src },
+                img { src: maturity_img_src },
             }
             children.read().as_ref().map(|c| rsx! {
                 ul {
@@ -117,4 +122,20 @@ fn use_load_children_handler(
             }
         }
     })
+}
+
+fn item_display_str(item: &Item) -> String {
+    format!(
+        "[{pn}-{version:03}] - '{name}'",
+        pn = item.pn(),
+        name = item.name(),
+        version = item.version()
+    )
+}
+
+fn item_display_quantity_str(item: &Item, quantity: usize) -> String {
+    format!(
+        "{item} | quantity : {quantity}",
+        item = item_display_str(item)
+    )
 }
