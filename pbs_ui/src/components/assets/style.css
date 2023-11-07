@@ -65,6 +65,11 @@ body {
     margin-right: 6px;
 }
 
+/* Keep the space before item if the is no child */
+#view-item  .invisible.caret::before {
+    color: transparent;
+}
+
 /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
 #view-item .caret-down::before {
     transform: rotate(90deg);
