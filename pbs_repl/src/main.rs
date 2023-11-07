@@ -20,7 +20,7 @@ const COMMANDS: &str = r#"
  - list                                           List all items in the store
  - child add <PARENT_ID> <CHILD_ID> <QUANTITY>    Add a child item to an parent item
  - child del <PARENT_ID> <CHILD_ID>               Remove a child item from a parent item
- - tree <ID>                                      Show the children of an item
+ - tree <ID>                                      Show the children recursively of an item
  - where-used <ID>                                Show all items where the given <PN> is used"#;
 
 struct PbsRepl {
@@ -93,15 +93,21 @@ impl PbsRepl {
         self.store.remove_child(params.parent_id, params.child_id)
     }
 
-    fn handle_tree(&self, params: TreeParams) -> Result<()> {
-        let parent = self.store.item(params.id)?;
-        println!("{parent} childrens :");
-        for child in &self.store.children(params.id)? {
+    fn print_children(&self, id: i64, level: usize) -> Result<()> {
+        let indent = "  ".repeat(level);
+        for child in &self.store.children(id)? {
             let item = child.item();
             let quantity = child.quantity();
-            println!("  - {item} : {quantity}");
+            println!("{indent}- {item} : quantity={quantity}");
+            self.print_children(item.id(), level + 1)?;
         }
         Ok(())
+    }
+
+    fn handle_tree(&self, params: TreeParams) -> Result<()> {
+        let parent = self.store.item(params.id)?;
+        println!("{parent}");
+        self.print_children(parent.id(), 1)
     }
 
     fn handle_where_used(&self, params: WhereUsedParams) -> Result<()> {

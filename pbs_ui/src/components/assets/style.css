@@ -37,3 +37,45 @@ body {
     text-decoration: underline;
     color: lightgreen;
 }
+
+/* VIEW_ITEM */
+#view-item ul,
+#myUL {
+    list-style-type: none;
+}
+
+/* Remove margins and padding from the parent ul */
+#view-item #myUL {
+    margin: 0;
+    padding: 0;
+}
+
+/* Style the caret/arrow */
+#view-item .caret {
+    cursor: pointer;
+    user-select: none;
+    /* Prevent text selection */
+}
+
+/* Create the caret/arrow with a unicode, and style it */
+#view-item .caret::before {
+    content: "\25B6";
+    color: black;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+/* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+#view-item .caret-down::before {
+    transform: rotate(90deg);
+}
+
+/* Hide the nested list */
+#view-item .nested {
+    display: none;
+}
+
+/* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+#view-item .active {
+    display: block;
+}
