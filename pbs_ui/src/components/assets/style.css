@@ -9,6 +9,27 @@ a {
     padding: 0.2em 1em;
 }
 
+/* COMMON */
+
+.item-desc {
+    display: inline-block;
+    border-radius: 12px;
+    border: 1px solid black;
+    background-color: #ffccdd;
+    padding: 0.3em 1em;
+    vertical-align: middle;
+}
+
+.item-desc svg {
+    margin: 0 1em;
+}
+
+.item-quantity {
+    border-radius: 12px;
+    border: 1px solid black;
+    background-color: #ccdddd;
+    padding: 0.3em 1em;
+}
 
 /* TOP MENU */
 
@@ -73,7 +94,7 @@ a {
 }
 
 /* Keep the space before item if the is no child */
-#view-item  .invisible.caret::before {
+#view-item .invisible.caret::before {
     color: transparent;
 }
 

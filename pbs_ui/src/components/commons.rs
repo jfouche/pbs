@@ -22,7 +22,7 @@ pub fn item_descr(cx: Scope<ItemProps>) -> Element {
 
     render! {
         span {
-            style: "border-radius: 12px;border: 1px solid;background-color: #ffccdd;padding: 0.3em 1em;",
+            class: "item-desc",
             text,
             match cx.props.item.strategy() {
                 Strategy::Make => rsx! { Icon { icon : BsTools } },
@@ -41,10 +41,11 @@ pub fn item_descr(cx: Scope<ItemProps>) -> Element {
 pub struct QuantityProps {
     quantity: usize,
 }
+
 pub fn item_quantity(cx: Scope<QuantityProps>) -> Element {
     render! {
         span {
-            style: "border-radius: 12px; border: 1px solid black; background-color: #ccdddd; padding: 0.3em 1em;",
+            class: "item-quantity",
             format!("{}", cx.props.quantity),
         }
     }

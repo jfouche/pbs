@@ -215,7 +215,7 @@ impl Database {
         Ok(Database(conn))
     }
 
-    // Get a config value from database
+    /// Get a config value from database
     pub fn read_config(&self, key: &str) -> Result<String> {
         let mut stmt = self
             .prepare("SELECT value FROM config WHERE key = ?1")
@@ -228,7 +228,7 @@ impl Database {
         .convert()
     }
 
-    // Set a config value in database
+    /// Set a config value in database
     pub fn write_config(&self, key: &str, value: &str) -> Result<()> {
         let mut stmt = self
             .prepare("REPLACE into config(key, value) VALUES(?1, ?2)")
@@ -236,7 +236,7 @@ impl Database {
         stmt.execute((key, value)).map(|_| ()).convert()
     }
 
-    // Add a new item to the store
+    /// Add a new item to the store
     pub(crate) fn insert_item(
         &self,
         pn: &str,
@@ -328,7 +328,7 @@ impl Database {
         Ok(())
     }
 
-    /// Delete a child (and its quantity) from an item
+    /// Delete a child (all its quantity) from an item
     pub(crate) fn delete_child(&self, parent_id: i64, child_id: i64) -> Result<()> {
         if self
             .execute(
@@ -360,7 +360,7 @@ impl Database {
         Ok(items)
     }
 
-    ///
+    /// Return all parent [Item]s using item `id`
     pub(crate) fn where_used(&self, id: i64) -> Result<Vec<Item>> {
         let mut stmt = self
             .prepare("SELECT * FROM view_where_used WHERE id_child = ?1")
