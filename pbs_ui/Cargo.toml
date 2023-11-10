@@ -12,6 +12,8 @@ dioxus = "0.4"
 dioxus-desktop = "0.4"
 dioxus-router = "0.4"
 
+dioxus-free-icons ={ version = "0.7", features = ["bootstrap"]}
+
 tokio = { version = "1.33", features = ["full"] }
 futures-util = { version = "0.3", default-features = false }
 

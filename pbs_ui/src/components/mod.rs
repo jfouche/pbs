@@ -1,4 +1,5 @@
 mod app;
+mod commons;
 mod page_new_item;
 mod page_search;
 mod page_view_item;

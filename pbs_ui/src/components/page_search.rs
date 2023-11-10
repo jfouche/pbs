@@ -1,4 +1,7 @@
-use crate::{client, components::Page};
+use crate::{
+    client,
+    components::{commons::item_descr, Page},
+};
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 use pbs_srv::Item;
@@ -54,14 +57,7 @@ struct SearchResultsProps<'a> {
 fn search_results<'a>(cx: Scope<'a, SearchResultsProps<'a>>) -> Element {
     render!(
         h2 { "Results" },
-        table {
-            tr {
-                th { "Name" },
-                th { "Part number" },
-                th { "Version" },
-                th { "Maturity" },
-                th { "Action" },
-            }
+        ul {
             cx.props.items.iter().map(|i| rsx!( item_row { item: i }))
         }
     )
@@ -77,20 +73,15 @@ fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
     let id = cx.props.item.id();
 
     render!(
-        tr {
-            td { cx.props.item.name() },
-            td { cx.props.item.pn() },
-            td { cx.props.item.version().to_string() },
-            td { cx.props.item.maturity().to_string() },
-            td {
-                a {
-                    onclick: move |e| {
-                        *current_page.write() = Page::ViewItem(id);
-                        e.stop_propagation();
-                    },
-                    "View"
+        li {
+            item_descr { item: cx.props.item.clone() },
+           a {
+                onclick: move |e| {
+                    *current_page.write() = Page::ViewItem(id);
+                    e.stop_propagation();
                 },
-            }
+                "View"
+            },
         }
     )
 }

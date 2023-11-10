@@ -2,6 +2,14 @@ body {
     background-color: #acd5fd;
 }
 
+a {
+    border: 1px solid black;
+    border-radius: 12px;
+    background: darkcyan;
+    padding: 0.2em 1em;
+}
+
+
 /* TOP MENU */
 
 #top-menu {
@@ -19,7 +27,6 @@ body {
     display: block;
     color: #111;
     text-align: center;
-    padding: 3px 3px;
     margin: 0 1em;
     text-decoration: none;
 }

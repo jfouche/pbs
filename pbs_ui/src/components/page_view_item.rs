@@ -1,8 +1,11 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
-use pbs_srv::{Child, Item, ItemMaturity, Strategy};
+use pbs_srv::{Child, Item};
 
-use crate::client;
+use crate::{
+    client,
+    components::commons::{item_descr, item_quantity},
+};
 
 #[derive(Props, PartialEq)]
 pub struct ItemIdProps {
@@ -49,15 +52,6 @@ fn tree_item(cx: Scope<TreeItemProps>) -> Element {
         _ => is_open.with(|b| if *b { "caret caret-down" } else { "caret" }),
     };
     let children_class = is_open.with(|b| if *b { "nested active" } else { "nested" });
-    let stategy_img_src = match cx.props.item.strategy() {
-        Strategy::Make => "pbs_ui/public/tools.svg",
-        Strategy::Buy => "pbs_ui/public/coin.svg",
-    };
-    let maturity_img_src = match cx.props.item.maturity() {
-        ItemMaturity::InProgress => "pbs_ui/public/pending.svg",
-        ItemMaturity::Released => "pbs_ui/public/release.svg",
-        ItemMaturity::Obsolete => "pbs_ui/public/obsolete.svg",
-    };
 
     let toggle = move || {
         is_open.with_mut(|b| *b = !*b);
@@ -71,9 +65,8 @@ fn tree_item(cx: Scope<TreeItemProps>) -> Element {
             span {
                 class: current_class,
                 onclick: move |_| toggle(),
-                item_display_quantity_str(&cx.props.item, cx.props.quantity),
-                img { src: stategy_img_src },
-                img { src: maturity_img_src },
+                item_descr { item: cx.props.item.clone() },
+                item_quantity { quantity: cx.props.quantity }
             }
             children.read().as_ref().map(|c| rsx! {
                 ul {
@@ -122,20 +115,4 @@ fn use_load_children_handler(
             }
         }
     })
-}
-
-fn item_display_str(item: &Item) -> String {
-    format!(
-        "[{pn}-{version:03}] - '{name}'",
-        pn = item.pn(),
-        name = item.name(),
-        version = item.version()
-    )
-}
-
-fn item_display_quantity_str(item: &Item, quantity: usize) -> String {
-    format!(
-        "{item} | quantity : {quantity}",
-        item = item_display_str(item)
-    )
 }
