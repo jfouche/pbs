@@ -1,31 +1,16 @@
 use crate::{
-    client,
     components::{commons::item_descr, Page},
+    service::search_service,
 };
 use dioxus::prelude::*;
-use futures_util::StreamExt;
 use pbs_srv::Item;
 
 pub fn page_search(cx: Scope) -> Element {
     let results: &UseState<Vec<Item>> = use_state(cx, Vec::new);
     let message = use_state(cx, String::new);
 
-    let search_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
-        to_owned![message, results];
-        async move {
-            while let Some(pattern) = rx.next().await {
-                match client::search_items(&pattern).await {
-                    Ok(items) => {
-                        message.set(format!("FOUND {} items", items.len()));
-                        results.set(items);
-                    }
-                    Err(e) => {
-                        results.set(vec![]);
-                        message.set(format!("ERROR : {e:?}"))
-                    }
-                }
-            }
-        }
+    let search_handler = use_coroutine(cx, |rx| {
+        search_service(rx, results.to_owned(), message.to_owned())
     });
 
     render! {

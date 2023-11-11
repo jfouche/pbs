@@ -1,6 +1,5 @@
-use crate::client;
+use crate::service::{buy_item_service, make_item_service};
 use dioxus::prelude::*;
-use futures_util::StreamExt;
 
 pub fn page_new_item(cx: Scope) -> Element {
     render! {
@@ -12,19 +11,7 @@ pub fn page_new_item(cx: Scope) -> Element {
 fn make_item(cx: Scope) -> Element {
     let name = use_state(cx, String::new);
     let message = use_state(cx, String::new);
-
-    let make_item_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<String>| {
-        to_owned![message];
-        async move {
-            while let Some(name) = rx.next().await {
-                let msg = match client::item_make(&name).await {
-                    Ok(item) => format!("Item MAKE [{}] created", item.pn()),
-                    Err(e) => format!("ERROR : {e:?}"),
-                };
-                message.set(msg);
-            }
-        }
-    });
+    let make_item_handler = use_coroutine(cx, |rx| make_item_service(rx, message.to_owned()));
 
     cx.render(rsx! {
         div {
@@ -34,7 +21,7 @@ fn make_item(cx: Scope) -> Element {
                 input {
                     name: "name",
                     value: "{name}",
-                    onmounted: move |evt| {evt.data.set_focus(true);},
+                    onmounted: move |evt| { evt.data.set_focus(true); },
                     oninput: move |evt| name.set(evt.value.clone()),
                 },
                 br {},
@@ -54,19 +41,7 @@ fn buy_item(cx: Scope) -> Element {
     let pn = use_state(cx, String::new);
     let name = use_state(cx, String::new);
     let message = use_state(cx, String::new);
-
-    let buy_item_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<(String, String)>| {
-        to_owned![message];
-        async move {
-            while let Some((pn, name)) = rx.next().await {
-                let msg = match client::item_buy(&pn, &name).await {
-                    Ok(_) => "Item BUY created".to_string(),
-                    Err(e) => format!("ERROR : {e:?}"),
-                };
-                message.set(msg);
-            }
-        }
-    });
+    let buy_item_handler = use_coroutine(cx, |rx| buy_item_service(rx, message.to_owned()));
 
     render! {
         div {

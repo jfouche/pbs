@@ -1,10 +1,9 @@
 use dioxus::prelude::*;
-use futures_util::StreamExt;
 use pbs_srv::{Child, Item};
 
 use crate::{
-    client,
     components::commons::{item_descr, item_quantity},
+    service::{load_children_service, load_item_service},
 };
 
 #[derive(Props, PartialEq)]
@@ -13,7 +12,7 @@ pub struct ItemIdProps {
 }
 
 pub fn page_view_item(cx: Scope<ItemIdProps>) -> Element {
-    let item_future = use_load_item_handler(cx, cx.props.id);
+    let item_future = use_future(cx, (), |_| load_item_service(cx.props.id));
 
     render! {
         div {
@@ -40,7 +39,8 @@ struct TreeItemProps {
 fn tree_item(cx: Scope<TreeItemProps>) -> Element {
     let is_open = use_ref(cx, || false);
     let children = use_ref(cx, || Option::<Vec<Child>>::None);
-    let load_children_handler = use_load_children_handler(cx, children.to_owned());
+    let load_children_handler =
+        use_coroutine(cx, |rx| load_children_service(rx, children.to_owned()));
 
     let id = cx.props.item.id();
     let current_class = match children.read().as_ref() {
@@ -78,36 +78,4 @@ fn tree_item(cx: Scope<TreeItemProps>) -> Element {
             })
         }
     }
-}
-
-fn use_load_item_handler(cx: &ScopeState, id: i64) -> &UseFuture<Item> {
-    use_future(cx, (), |_| async move {
-        match client::item(id).await {
-            Ok(item) => item,
-            Err(e) => {
-                eprint!("ERROR : {e:?}");
-                todo!()
-            }
-        }
-    })
-}
-
-fn use_load_children_handler(
-    cx: &ScopeState,
-    children: UseRef<Option<Vec<Child>>>,
-) -> &Coroutine<i64> {
-    use_coroutine(cx, |mut rx: UnboundedReceiver<i64>| async move {
-        while let Some(id) = rx.next().await {
-            match client::children(id).await {
-                Ok(c) => {
-                    println!("load_children_handler() - received {} children", c.len());
-                    children.set(Some(c.into_iter().map(|c| c.into()).collect()));
-                }
-                Err(e) => {
-                    eprint!("ERROR : {e:?}");
-                    todo!()
-                }
-            }
-        }
-    })
 }

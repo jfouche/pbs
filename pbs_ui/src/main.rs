@@ -4,6 +4,7 @@ use tracing::error;
 
 mod client;
 mod components;
+mod service;
 
 fn main() {
     println!("main()");
