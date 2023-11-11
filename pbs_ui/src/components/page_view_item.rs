@@ -13,17 +13,14 @@ pub struct ItemIdProps {
 }
 
 pub fn page_view_item(cx: Scope<ItemIdProps>) -> Element {
-    let item = use_ref(cx, || Option::<Item>::None);
-    let load_item_handler = use_load_item_handler(cx, item.to_owned());
+    let item_future = use_load_item_handler(cx, cx.props.id);
 
     render! {
         div {
             id: "view-item",
-            onmounted: move |_| load_item_handler.send(cx.props.id),
-
-            match *item.read() {
-                Some(ref item) => rsx!(
-                    h2 { "{item.name()}" }
+            match item_future.value() {
+                Some(item) => rsx!(
+                    h2 { item.name() }
                     ul {
                         tree_item { item : item.clone(), quantity : 1 }
                     }
@@ -83,15 +80,13 @@ fn tree_item(cx: Scope<TreeItemProps>) -> Element {
     }
 }
 
-fn use_load_item_handler(cx: &ScopeState, item: UseRef<Option<Item>>) -> &Coroutine<i64> {
-    use_coroutine(cx, |mut rx: UnboundedReceiver<i64>| async move {
-        while let Some(id) = rx.next().await {
-            match client::item(id).await {
-                Ok(i) => item.set(Some(i)),
-                Err(e) => {
-                    eprint!("ERROR : {e:?}");
-                    todo!()
-                }
+fn use_load_item_handler(cx: &ScopeState, id: i64) -> &UseFuture<Item> {
+    use_future(cx, (), |_| async move {
+        match client::item(id).await {
+            Ok(item) => item,
+            Err(e) => {
+                eprint!("ERROR : {e:?}");
+                todo!()
             }
         }
     })
