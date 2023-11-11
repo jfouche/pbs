@@ -48,10 +48,18 @@ fn buy_item(cx: Scope) -> Element {
             fieldset {
                 legend { "Import COTS" }
                 label { r#for: "pn", "Part Number" }
-                input { name: "cots_name", "value": "{name}" },
+                input {
+                    name: "cots_name",
+                    value: "{name}",
+                    oninput: move |evt| name.set(evt.value.clone()),
+                },
                 br {},
                 label { r#for: "name", "Name" }
-                input { name: "cots_pn", "value": "{pn}" }
+                input {
+                    name: "cots_pn",
+                    value: "{pn}",
+                    oninput: move |evt| pn.set(evt.value.clone()),
+                }
                 br {},
                 button { onclick: move |_| {
                     buy_item_handler.send((pn.get().to_owned(), name.get().to_owned()))
