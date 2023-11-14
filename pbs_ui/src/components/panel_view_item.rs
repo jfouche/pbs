@@ -3,7 +3,7 @@ use pbs_srv::{Child, Item};
 
 use crate::{
     components::commons::{item_descr, item_quantity},
-    service::{load_children_service, load_item_service},
+    service::{load_children_service, load_item_service, search_service},
 };
 
 #[derive(Props, PartialEq)]
@@ -14,6 +14,12 @@ pub struct ItemIdProps {
 pub fn panel_view_item(cx: Scope<ItemIdProps>) -> Element {
     let item_future = use_future(cx, (), |_| load_item_service(cx.props.id));
 
+    let _modifiable = item_future
+        .value()
+        .as_ref()
+        .map(|item| item.is_modifiable())
+        .unwrap_or(false);
+
     render! {
         div {
             id: "view-item",
@@ -23,8 +29,48 @@ pub fn panel_view_item(cx: Scope<ItemIdProps>) -> Element {
                     ul {
                         tree_item { item : item.clone(), quantity : 1 }
                     }
+                    panel_update { }
                 ),
                 None => rsx!(p { "loading" })
+            }
+        }
+    }
+}
+
+fn panel_update(cx: Scope) -> Element {
+    let results = use_state(cx, Vec::<Item>::new);
+    let message = use_state(cx, String::new);
+    let search_handler = use_coroutine(cx, |rx| {
+        search_service(rx, results.to_owned(), message.to_owned())
+    });
+
+    render! {
+        div {
+            input {
+                class: "w3-border w3-padding",
+                list: "results",
+                oninput: move |evt| {
+                    let pattern = evt.value.to_owned();
+                    if pattern.len() > 2 {
+                        search_handler.send(pattern);
+                    }
+                }
+            }
+            datalist {
+                id:"results",
+                results.iter().map(|item| {
+                    rsx! {
+                        option {
+                            value: "{item.id()}",
+                            label: "{item.name()} {item.pn()}-{item.version():03}"
+                        }
+                    }
+                })
+
+            }
+            button {
+                class: "w3-button w3-theme",
+                "Add child"
             }
         }
     }

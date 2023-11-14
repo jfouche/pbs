@@ -143,6 +143,10 @@ impl Item {
     pub fn strategy(&self) -> Strategy {
         self.strategy
     }
+
+    pub fn is_modifiable(&self) -> bool {
+        self.strategy == Strategy::Make && self.maturity == ItemMaturity::InProgress
+    }
 }
 
 impl std::fmt::Display for Item {

@@ -12,6 +12,7 @@ pub async fn search_service(
     message: UseState<String>,
 ) {
     while let Some(pattern) = rx.next().await {
+        let pattern = format!("%{pattern}%");
         match client::search_items(&pattern).await {
             Ok(items) => {
                 message.set(format!("FOUND {} items", items.len()));

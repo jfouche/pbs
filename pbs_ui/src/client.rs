@@ -4,6 +4,7 @@ pub static BASE_API_URL: &str = "http://localhost:3030";
 
 /// GET /search?pattern=<pattern>
 pub async fn search_items(pattern: &str) -> Result<Vec<Item>, reqwest::Error> {
+    let pattern = urlencoding::encode(pattern);
     let url = format!("{BASE_API_URL}/search?pattern={pattern}");
     let items = reqwest::get(&url).await?.json::<Vec<Item>>().await?;
     Ok(items)
