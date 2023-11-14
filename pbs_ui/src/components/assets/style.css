@@ -1,14 +1,3 @@
-body {
-    background-color: #acd5fd;
-}
-
-a {
-    border: 1px solid black;
-    border-radius: 12px;
-    background: darkcyan;
-    padding: 0.2em 1em;
-}
-
 /* COMMON */
 
 .item-desc {

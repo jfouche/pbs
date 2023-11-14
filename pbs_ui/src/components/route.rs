@@ -79,19 +79,17 @@ fn PageNotFound(cx: Scope, route: Vec<String>) -> Element {
 #[inline_props]
 fn app_nest<'a>(cx: Scope, children: Element<'a>) -> Element {
     render! {
+        top_menu { },
         div {
-            style { include_str!("./assets/style.css") }
-            top_menu { },
+            class: "w3-theme-l5 w3-container w3-content",
+            style: "display: flex",
             div {
-                style: "display: flex",
-                div {
-                    style: "flex:1",
-                    class:"container",
-                    h1 { "Product Breakdow Software" }
-                    children
-                },
-                panel_recently_use { },
-            }
+                style: "flex:1",
+                class:"container",
+                h1 { "Product Breakdow Software" }
+                children
+            },
+            panel_recently_use { },
         }
     }
 }

@@ -19,7 +19,7 @@ pub fn panel_view_item(cx: Scope<ItemIdProps>) -> Element {
             id: "view-item",
             match item_future.value() {
                 Some(item) => rsx!(
-                    h2 { item.name() }
+                    h2 { "Item : {item.name()}" }
                     ul {
                         tree_item { item : item.clone(), quantity : 1 }
                     }

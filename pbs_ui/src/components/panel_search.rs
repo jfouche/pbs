@@ -16,6 +16,7 @@ pub fn panel_search(cx: Scope, pattern: String) -> Element {
     render! {
         h2 { "Search item" },
         input {
+            class: "w3-border w3-padding",
             "value": "{pattern}",
             oninput: move |evt| {
                 let pattern = evt.value.to_owned();

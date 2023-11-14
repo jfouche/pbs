@@ -19,6 +19,7 @@ fn make_item(cx: Scope) -> Element {
                 legend { "Create new part number" }
                 label { r#for: "name", "Name" }
                 input {
+                    class: "w3-border w3-padding",
                     name: "name",
                     value: "{name}",
                     onmounted: move |evt| { evt.data.set_focus(true); },
@@ -26,6 +27,7 @@ fn make_item(cx: Scope) -> Element {
                 },
                 br {},
                 button {
+                    class: "w3-button w3-theme",
                     onclick: move |_| {
                         make_item_handler.send(name.get().to_owned())
                     }
@@ -49,6 +51,7 @@ fn buy_item(cx: Scope) -> Element {
                 legend { "Import COTS" }
                 label { r#for: "pn", "Part Number" }
                 input {
+                    class: "w3-border w3-padding",
                     name: "cots_name",
                     value: "{name}",
                     oninput: move |evt| name.set(evt.value.clone()),
@@ -56,14 +59,18 @@ fn buy_item(cx: Scope) -> Element {
                 br {},
                 label { r#for: "name", "Name" }
                 input {
+                    class: "w3-border w3-padding",
                     name: "cots_pn",
                     value: "{pn}",
                     oninput: move |evt| pn.set(evt.value.clone()),
                 }
                 br {},
-                button { onclick: move |_| {
-                    buy_item_handler.send((pn.get().to_owned(), name.get().to_owned()))
-                }, "Create" }
+                button {
+                    class: "w3-button w3-theme",
+                    onclick: move |_| {
+                        buy_item_handler.send((pn.get().to_owned(), name.get().to_owned()))
+                    },
+                    "Create" }
             },
             p { "MESSAGE" }
         }
