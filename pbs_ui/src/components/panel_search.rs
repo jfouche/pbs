@@ -2,12 +2,11 @@ use crate::components::route::Route;
 use crate::{components::commons::item_descr, service::search_service};
 use dioxus::prelude::*;
 use dioxus_router::components::Link;
-use dioxus_router::hooks::use_navigator;
 use pbs_srv::Item;
 
 #[inline_props]
 pub fn panel_search(cx: Scope, pattern: String) -> Element {
-    let results: &UseState<Vec<Item>> = use_state(cx, Vec::new);
+    let results = use_state(cx, Vec::<Item>::new);
     let message = use_state(cx, String::new);
 
     let search_handler = use_coroutine(cx, |rx| {

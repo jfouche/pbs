@@ -23,11 +23,11 @@ pub fn item_descr(cx: Scope<ItemProps>) -> Element {
     render! {
         span {
             class: "item-desc",
-            text,
             match cx.props.item.strategy() {
                 Strategy::Make => rsx! { Icon { icon : BsTools } },
                 Strategy::Buy => rsx! { Icon { icon : BsCurrencyDollar } }
             }
+            text,
             match cx.props.item.maturity() {
                 ItemMaturity::InProgress => rsx! { Icon { icon: BsPatchQuestion } },
                 ItemMaturity::Released => rsx! { Icon { icon: BsPatchCheck } },

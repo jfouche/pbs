@@ -1,8 +1,8 @@
 use dioxus::prelude::*;
 use dioxus_router::prelude::*;
 
-use crate::components::panel_history::panel_history;
 use crate::components::panel_new_item::panel_new_item;
+use crate::components::panel_recently_use::panel_recently_use;
 use crate::components::panel_search::panel_search;
 use crate::components::panel_view_item::panel_view_item;
 use crate::components::top_menu::top_menu;
@@ -90,7 +90,7 @@ fn app_nest<'a>(cx: Scope, children: Element<'a>) -> Element {
                     h1 { "Product Breakdow Software" }
                     children
                 },
-                panel_history { },
+                panel_recently_use { },
             }
         }
     }
