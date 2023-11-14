@@ -13,13 +13,6 @@ pub struct ItemProps {
 }
 
 pub fn item_descr(cx: Scope<ItemProps>) -> Element {
-    let text = format!(
-        "[{pn}-{version:03}] - '{name}'",
-        pn = cx.props.item.pn(),
-        name = cx.props.item.name(),
-        version = cx.props.item.version()
-    );
-
     render! {
         span {
             class: "item-desc",
@@ -27,7 +20,10 @@ pub fn item_descr(cx: Scope<ItemProps>) -> Element {
                 Strategy::Make => rsx! { Icon { icon : BsTools } },
                 Strategy::Buy => rsx! { Icon { icon : BsCurrencyDollar } }
             }
-            text,
+            span { cx.props.item.pn() }
+            "-"
+            span { format!("{:03}", cx.props.item.version()) }
+            b { cx.props.item.name() }
             match cx.props.item.maturity() {
                 ItemMaturity::InProgress => rsx! { Icon { icon: BsPatchQuestion } },
                 ItemMaturity::Released => rsx! { Icon { icon: BsPatchCheck } },
