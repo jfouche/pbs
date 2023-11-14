@@ -1,11 +1,10 @@
-use crate::{
-    components::{commons::item_descr, Page},
-    service::search_service,
-};
+use crate::components::route::Route;
+use crate::{components::commons::item_descr, service::search_service};
 use dioxus::prelude::*;
+use dioxus_router::components::Link;
 use pbs_srv::Item;
 
-pub fn page_search(cx: Scope) -> Element {
+pub fn panel_search(cx: Scope) -> Element {
     let results: &UseState<Vec<Item>> = use_state(cx, Vec::new);
     let message = use_state(cx, String::new);
 
@@ -54,17 +53,13 @@ struct ItemRowProps<'a> {
 }
 
 fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
-    let current_page = use_shared_state::<Page>(cx).unwrap();
     let id = cx.props.item.id();
 
     render!(
         li {
             item_descr { item: cx.props.item.clone() },
-           a {
-                onclick: move |e| {
-                    *current_page.write() = Page::ViewItem(id);
-                    e.stop_propagation();
-                },
+            Link {
+                to: Route::ViewItem { id },
                 "View"
             },
         }

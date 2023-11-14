@@ -1,7 +1,7 @@
 use crate::service::{buy_item_service, make_item_service};
 use dioxus::prelude::*;
 
-pub fn page_new_item(cx: Scope) -> Element {
+pub fn panel_new_item(cx: Scope) -> Element {
     render! {
         make_item {}
         buy_item {}

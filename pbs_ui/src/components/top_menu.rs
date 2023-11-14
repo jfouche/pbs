@@ -1,13 +1,16 @@
 use dioxus::prelude::*;
+use dioxus_router::components::{GoBackButton, GoForwardButton, Link};
 
-use super::Page;
+use crate::components::route::Route;
 
 pub fn top_menu(cx: Scope) -> Element {
     render!(
         ul {
             id: "top-menu",
-            menu_item { title: "New item", page: Page::NewItem}
-            menu_item { title: "Search item", page: Page::SearchItems}
+            GoBackButton { "<" }
+            GoForwardButton  { ">" }
+            menu_item { title: "New item", route: Route::NewItem { } }
+            menu_item { title: "Search item", route: Route::Search { } }
         }
     )
 }
@@ -15,27 +18,16 @@ pub fn top_menu(cx: Scope) -> Element {
 #[derive(Props)]
 struct MenuItemProps<'a> {
     title: &'a str,
-    page: Page,
+    route: Route,
 }
 
 fn menu_item<'a>(cx: Scope<'a, MenuItemProps<'a>>) -> Element {
-    let current_page = use_shared_state::<Page>(cx).unwrap();
     let title = cx.props.title;
-    let page = cx.props.page;
-    let class = if *current_page.read() == page {
-        "active"
-    } else {
-        ""
-    };
-
     render!(
         li {
-            class: class,
-            a {
-                onclick: move |e| {
-                    *current_page.write() = page;
-                    e.stop_propagation();
-                },
+            class: "",
+            Link {
+                to: cx.props.route.to_owned(),
                 "{title}"
             }
         }

@@ -11,7 +11,7 @@ pub struct ItemIdProps {
     pub id: i64,
 }
 
-pub fn page_view_item(cx: Scope<ItemIdProps>) -> Element {
+pub fn panel_view_item(cx: Scope<ItemIdProps>) -> Element {
     let item_future = use_future(cx, (), |_| load_item_service(cx.props.id));
 
     render! {

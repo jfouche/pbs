@@ -1,16 +1,10 @@
 mod app;
 mod commons;
-mod page_new_item;
-mod page_search;
-mod page_view_item;
 mod panel_history;
+mod panel_new_item;
+mod panel_search;
+mod panel_view_item;
+mod route;
 mod top_menu;
 
 pub use app::app;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Page {
-    NewItem,
-    SearchItems,
-    ViewItem(i64),
-}
