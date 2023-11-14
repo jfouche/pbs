@@ -10,7 +10,7 @@ pub fn top_menu(cx: Scope) -> Element {
             GoBackButton { "<" }
             GoForwardButton  { ">" }
             menu_item { title: "New item", route: Route::NewItem { } }
-            menu_item { title: "Search item", route: Route::Search { } }
+            menu_item { title: "Search item", route: Route::Search { pattern: String::new() } }
         }
     )
 }

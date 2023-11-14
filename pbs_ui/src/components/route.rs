@@ -16,8 +16,8 @@ pub enum Route {
     // #[route("/", ComponentName, PropsName)]
     Home {},
 
-    #[route("/search")]
-    Search {},
+    #[route("/search/:pattern")]
+    Search { pattern: String },
 
     #[route("/new_item")]
     NewItem {},
@@ -33,15 +33,16 @@ pub enum Route {
 fn Home(cx: Scope) -> Element {
     render! {
         app_nest {
-            panel_search { }
+            panel_search { pattern: String::new() }
         }
     }
 }
 
-fn Search(cx: Scope) -> Element {
+#[inline_props]
+fn Search(cx: Scope, pattern: String) -> Element {
     render! {
         app_nest {
-            panel_search { }
+            panel_search { pattern: pattern.to_owned() }
         }
     }
 }

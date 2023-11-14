@@ -2,9 +2,11 @@ use crate::components::route::Route;
 use crate::{components::commons::item_descr, service::search_service};
 use dioxus::prelude::*;
 use dioxus_router::components::Link;
+use dioxus_router::hooks::use_navigator;
 use pbs_srv::Item;
 
-pub fn panel_search(cx: Scope) -> Element {
+#[inline_props]
+pub fn panel_search(cx: Scope, pattern: String) -> Element {
     let results: &UseState<Vec<Item>> = use_state(cx, Vec::new);
     let message = use_state(cx, String::new);
 
@@ -15,7 +17,7 @@ pub fn panel_search(cx: Scope) -> Element {
     render! {
         h2 { "Search item" },
         input {
-            "value": "",
+            "value": "{pattern}",
             oninput: move |evt| {
                 let pattern = evt.value.to_owned();
                 if pattern.len() > 2 {
@@ -53,13 +55,11 @@ struct ItemRowProps<'a> {
 }
 
 fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
-    let id = cx.props.item.id();
-
     render!(
         li {
             item_descr { item: cx.props.item.clone() },
             Link {
-                to: Route::ViewItem { id },
+                to: Route::ViewItem { id: cx.props.item.id() },
                 "View"
             },
         }
