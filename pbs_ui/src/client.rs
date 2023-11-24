@@ -62,7 +62,6 @@ pub async fn children(id: i64) -> Result<Children, reqwest::Error> {
 /// `DELETE /item/:id_parent/child/:id_child`
 pub async fn delete_child(id_parent: i64, id_child: i64) -> Result<bool, reqwest::Error> {
     let url = format!("{BASE_API_URL}/item/{id_parent}/child/{id_child}");
-    eprintln!("delete_child({id_parent}, {id_child}) : {url}");
     reqwest::Client::builder()
         .build()?
         .delete(&url)

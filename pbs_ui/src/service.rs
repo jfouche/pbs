@@ -70,7 +70,6 @@ pub async fn load_children_coroutine(
     while let Some(id) = rx.next().await {
         match client::children(id).await {
             Ok(c) => {
-                println!("load_children_handler() - received {} children", c.len());
                 children.set(Some(c.into_iter().map(|c| c.into()).collect()));
             }
             Err(e) => {
@@ -93,7 +92,6 @@ pub async fn load_children_service(id: i64) -> Children {
 }
 
 pub fn delete_child_service<T>(cx: Scope<T>, id_parent: i64, id_child: i64) {
-    eprintln!("delete_child_service({id_parent}, {id_child})");
     cx.spawn({
         async move {
             match client::delete_child(id_parent, id_child).await {

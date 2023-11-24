@@ -33,7 +33,7 @@ struct AppState {
 }
 
 pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
-    info!("pbs_srv::serve({port})");
+    info!("serve({port})");
 
     let store_state = AppState {
         store: Arc::new(Store::open("store.db3")?),
@@ -44,6 +44,7 @@ pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
         .route("/item/buy", post(item_buy))
         .route("/item/:id", get(get_item))
         .route("/item/:id/children", get(get_item_children))
+        .route("/item/:id_parent/child", post(add_child))
         .route("/item/:id_parent/child/:id_child", delete(delete_child))
         .route("/list", get(list))
         .route("/search", get(search))
@@ -65,6 +66,7 @@ async fn fallback(uri: Uri) -> (StatusCode, String) {
     (StatusCode::NOT_FOUND, String::new())
 }
 
+/// `/list`
 async fn list(State(state): State<AppState>) -> impl IntoResponse {
     info!("list()");
     state
@@ -82,6 +84,7 @@ struct Pattern {
 #[derive(Serialize)]
 struct SearchResult(Vec<Item>);
 
+/// `/search`
 async fn search(State(state): State<AppState>, Query(query): Query<Pattern>) -> impl IntoResponse {
     info!("search({})", query.pattern);
     state
@@ -91,6 +94,7 @@ async fn search(State(state): State<AppState>, Query(query): Query<Pattern>) -> 
         .map(Json)
 }
 
+/// `/item/:id`
 async fn get_item(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {
     info!("get_item({id})");
     state
@@ -105,11 +109,12 @@ pub struct ItemMake {
     pub name: String,
 }
 
+/// `/item/make`
 async fn item_make(
     State(state): State<AppState>,
     Json(new_item): Json<ItemMake>,
 ) -> impl IntoResponse {
-    info!("pbs_srv::item_make({new_item:?})");
+    info!("item_make({new_item:?})");
     state
         .store
         .make_item(&new_item.name)
@@ -123,11 +128,12 @@ pub struct ItemBuy {
     pub name: String,
 }
 
+/// `/item/buy`
 async fn item_buy(
     State(state): State<AppState>,
     Json(new_item): Json<ItemBuy>,
 ) -> impl IntoResponse {
-    info!("pbs_srv::item_buy({new_item:?})");
+    info!("item_buy({new_item:?})");
     state
         .store
         .buy_item(&new_item.pn, &new_item.name)
@@ -135,11 +141,12 @@ async fn item_buy(
         .map(Json)
 }
 
+/// `/item/:id/children`
 async fn get_item_children(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> impl IntoResponse {
-    info!("pbs_srv::get_item_children({id})");
+    info!("get_item_children({id})");
     state
         .store
         .children(id)
@@ -147,11 +154,31 @@ async fn get_item_children(
         .map(Json)
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AddChild {
+    pub id_child: i64,
+    pub quantity: usize,
+}
+
+/// `/item/:id_parent/child`
+async fn add_child(
+    State(state): State<AppState>,
+    Path(id_parent): Path<i64>,
+    Json(child): Json<AddChild>,
+) -> impl IntoResponse {
+    info!("add_child({id_parent}, {child:?}");
+    state
+        .store
+        .add_child(id_parent, child.id_child, child.quantity)
+        .map_err(|_e| Error::StoreError)
+}
+
+/// `/item/:id_parent/child/:id_child`
 async fn delete_child(
     State(state): State<AppState>,
     Path((id_parent, id_child)): Path<(i64, i64)>,
 ) -> impl IntoResponse {
-    info!("pbs_srv::delete_child({id_parent}, {id_parent})");
+    info!("delete_child({id_parent}, {id_parent})");
     state
         .store
         .remove_child(id_parent, id_child)
