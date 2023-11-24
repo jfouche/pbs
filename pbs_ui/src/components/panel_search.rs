@@ -1,5 +1,5 @@
 use crate::components::route::Route;
-use crate::{components::commons::item_descr, service::search_service};
+use crate::{components::commons::item_descr, service::search_coroutine};
 use dioxus::prelude::*;
 use dioxus_router::components::Link;
 use pbs_srv::Item;
@@ -10,7 +10,7 @@ pub fn panel_search(cx: Scope, pattern: String) -> Element {
     let message = use_state(cx, String::new);
 
     let search_handler = use_coroutine(cx, |rx| {
-        search_service(rx, results.to_owned(), message.to_owned())
+        search_coroutine(rx, results.to_owned(), message.to_owned())
     });
 
     render! {

@@ -1,12 +1,12 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
-use pbs_srv::{Child, Item};
+use pbs_srv::{Child, Children, Item};
 
 use crate::client;
 
 /// Service that poll for pattern. One a paatern is available, it
 /// search for [Item]s matching this pattern, and update the results
-pub async fn search_service(
+pub async fn search_coroutine(
     mut rx: UnboundedReceiver<String>,
     results: UseState<Vec<Item>>,
     message: UseState<String>,
@@ -27,7 +27,7 @@ pub async fn search_service(
 }
 
 ///
-pub async fn make_item_service(mut rx: UnboundedReceiver<String>, message: UseState<String>) {
+pub async fn make_item_coroutine(mut rx: UnboundedReceiver<String>, message: UseState<String>) {
     while let Some(name) = rx.next().await {
         let msg = match client::item_make(&name).await {
             Ok(item) => format!("Item MAKE [{}] created", item.pn()),
@@ -38,7 +38,7 @@ pub async fn make_item_service(mut rx: UnboundedReceiver<String>, message: UseSt
 }
 
 ///
-pub async fn buy_item_service(
+pub async fn buy_item_coroutine(
     mut rx: UnboundedReceiver<(String, String)>,
     message: UseState<String>,
 ) {
@@ -63,7 +63,7 @@ pub async fn load_item_service(id: i64) -> Item {
 }
 
 ///
-pub async fn load_children_service(
+pub async fn load_children_coroutine(
     mut rx: UnboundedReceiver<i64>,
     children: UseRef<Option<Vec<Child>>>,
 ) {
@@ -77,6 +77,17 @@ pub async fn load_children_service(
                 eprint!("ERROR : {e:?}");
                 todo!()
             }
+        }
+    }
+}
+
+///
+pub async fn load_children_service(id: i64) -> Children {
+    match client::children(id).await {
+        Ok(c) => c,
+        Err(e) => {
+            eprint!("ERROR : {e:?}");
+            todo!()
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::service::{buy_item_service, make_item_service};
+use crate::service::{buy_item_coroutine, make_item_coroutine};
 use dioxus::prelude::*;
 
 pub fn panel_new_item(cx: Scope) -> Element {
@@ -11,7 +11,7 @@ pub fn panel_new_item(cx: Scope) -> Element {
 fn make_item(cx: Scope) -> Element {
     let name = use_state(cx, String::new);
     let message = use_state(cx, String::new);
-    let make_item_handler = use_coroutine(cx, |rx| make_item_service(rx, message.to_owned()));
+    let make_item_handler = use_coroutine(cx, |rx| make_item_coroutine(rx, message.to_owned()));
 
     cx.render(rsx! {
         div {
@@ -30,8 +30,8 @@ fn make_item(cx: Scope) -> Element {
                     class: "w3-button w3-theme",
                     onclick: move |_| {
                         make_item_handler.send(name.get().to_owned())
-                    }
-                    , "Create"
+                    },
+                    "Create"
                 }
             },
             div { "{message}"}
@@ -43,7 +43,7 @@ fn buy_item(cx: Scope) -> Element {
     let pn = use_state(cx, String::new);
     let name = use_state(cx, String::new);
     let message = use_state(cx, String::new);
-    let buy_item_handler = use_coroutine(cx, |rx| buy_item_service(rx, message.to_owned()));
+    let buy_item_handler = use_coroutine(cx, |rx| buy_item_coroutine(rx, message.to_owned()));
 
     render! {
         div {

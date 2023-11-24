@@ -1,5 +1,6 @@
 mod app;
 mod commons;
+mod panel_edit_item;
 mod panel_new_item;
 mod panel_recently_use;
 mod panel_search;
@@ -8,3 +9,17 @@ mod route;
 mod top_menu;
 
 pub use app::app;
+use dioxus::core_macro::Props;
+use pbs_srv::Item;
+
+// COMMON PROPS
+
+#[derive(Props, PartialEq)]
+pub struct ItemIdProps {
+    pub id: i64,
+}
+
+#[derive(Props, PartialEq)]
+pub struct ItemRefProps<'a> {
+    item: &'a Item,
+}
