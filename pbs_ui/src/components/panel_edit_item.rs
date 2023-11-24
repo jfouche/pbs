@@ -35,6 +35,7 @@ pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
                                         class: "w3-button w3-theme",
                                         onclick: move |_| {
                                             delete_child_service(cx, item.id(), child.id());
+                                            children_future.restart();
                                         },
                                         "Delete"
                                     }
@@ -42,6 +43,7 @@ pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
                              }
                         }
                     }
+                    hr {}
                     panel_update { }
                 ),
                 None => rsx!(p { "loading" })
