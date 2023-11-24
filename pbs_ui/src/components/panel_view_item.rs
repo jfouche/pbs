@@ -7,7 +7,7 @@ use crate::{
         commons::{item_descr, item_quantity},
         route::Route,
     },
-    service::{load_children_coroutine, load_item_service, search_coroutine},
+    service::{load_children_coroutine, load_item_service},
 };
 
 use super::{ItemIdProps, ItemRefProps};
@@ -24,7 +24,6 @@ pub fn panel_view_item(cx: Scope<ItemIdProps>) -> Element {
                     ul {
                         tree_item { item : item.clone(), quantity : 1 }
                     }
-                    panel_update { }
                 ),
                 None => rsx!(p { "loading" })
             }
@@ -42,50 +41,12 @@ fn item_title<'a>(cx: Scope<'a, ItemRefProps<'a>>) -> Element {
                     Link {
                         class: "w3-button w3-theme",
                         to: Route::EditItem { id: item.id() },
-                        "Create"                    }
+                        "Edit"
+                    }
                 }
             }
         }
     )
-}
-
-fn panel_update(cx: Scope) -> Element {
-    let results = use_state(cx, Vec::<Item>::new);
-    let message = use_state(cx, String::new);
-    let search_handler = use_coroutine(cx, |rx| {
-        search_coroutine(rx, results.to_owned(), message.to_owned())
-    });
-
-    render! {
-        div {
-            input {
-                class: "w3-border w3-padding",
-                list: "results",
-                oninput: move |evt| {
-                    let pattern = evt.value.to_owned();
-                    if pattern.len() > 2 {
-                        search_handler.send(pattern);
-                    }
-                }
-            }
-            datalist {
-                id:"results",
-                results.iter().map(|item| {
-                    rsx! {
-                        option {
-                            value: "{item.id()}",
-                            label: "{item.name()} {item.pn()}-{item.version():03}"
-                        }
-                    }
-                })
-
-            }
-            button {
-                class: "w3-button w3-theme",
-                "Add child"
-            }
-        }
-    }
 }
 
 #[derive(Props, PartialEq)]

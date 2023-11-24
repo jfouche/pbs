@@ -4,13 +4,14 @@ use pbs_srv::Item;
 
 use crate::{
     components::commons::{item_descr, item_quantity},
-    service::{load_children_service, load_item_service, search_coroutine},
+    service::{delete_child_service, load_children_service, load_item_service, search_coroutine},
 };
 
-use super::{ItemIdProps, ItemRefProps};
+use super::ItemIdProps;
 
 pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
     let item_future = use_future(cx, (), |_| load_item_service(cx.props.id));
+    let children_future = use_future(cx, (), |_| load_children_service(cx.props.id));
 
     render! {
         div {
@@ -20,8 +21,26 @@ pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
                     h2 {
                         "Item : {item.name()}"
                     }
-                    ul {
-                        tree_item { item : item }
+                    item_descr { item: item.clone() },
+                    match children_future.value() {
+                        None => rsx! { "Loading..."} ,
+                        Some(children) => rsx! {
+                            ul {
+                                children.into_iter().map(|child| rsx! {
+                                    li {
+                                        item_descr { item: child.item.clone() }
+                                        item_quantity { quantity: child.quantity }
+                                    }
+                                    button {
+                                        class: "w3-button w3-theme",
+                                        onclick: move |_| {
+                                            delete_child_service(cx, item.id(), child.id());
+                                        },
+                                        "Delete"
+                                    }
+                                })
+                             }
+                        }
                     }
                     panel_update { }
                 ),
@@ -65,30 +84,6 @@ fn panel_update(cx: Scope) -> Element {
             button {
                 class: "w3-button w3-theme",
                 "Add child"
-            }
-        }
-    }
-}
-
-fn tree_item<'a>(cx: Scope<'a, ItemRefProps<'a>>) -> Element {
-    let load_children_handler = use_future(cx, (), |_| load_children_service(cx.props.item.id()));
-    render! {
-        li {
-            span {
-                item_descr { item: cx.props.item.clone() },
-            }
-            match load_children_handler.value() {
-                None => rsx! { "Loading..."} ,
-                Some(children) => rsx! {
-                    ul {
-                        children.into_iter().map(|child| rsx! {
-                            li {
-                                item_descr { item: child.item.clone() }
-                                item_quantity { quantity: child.quantity }
-                            }
-                        })
-                     }
-                }
             }
         }
     }

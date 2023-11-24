@@ -1,14 +1,14 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{StatusCode, Uri},
     response::{IntoResponse, Response},
-    routing::{get, post, Router},
+    routing::{delete, get, post, Router},
     Json,
 };
 pub use pbs_core::*;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, sync::Arc};
-use tracing::info;
+use tracing::{info, warn};
 
 pub enum Error {
     StoreError,
@@ -44,8 +44,10 @@ pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
         .route("/item/buy", post(item_buy))
         .route("/item/:id", get(get_item))
         .route("/item/:id/children", get(get_item_children))
+        .route("/item/:id_parent/child/:id_child", delete(delete_child))
         .route("/list", get(list))
         .route("/search", get(search))
+        .fallback(fallback)
         .with_state(store_state);
 
     // run our app with hyper
@@ -56,6 +58,11 @@ pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
         .unwrap();
 
     Ok(())
+}
+
+async fn fallback(uri: Uri) -> (StatusCode, String) {
+    warn!("fallback({uri})");
+    (StatusCode::NOT_FOUND, String::new())
 }
 
 async fn list(State(state): State<AppState>) -> impl IntoResponse {
@@ -138,4 +145,15 @@ async fn get_item_children(
         .children(id)
         .map_err(|_e| Error::StoreError)
         .map(Json)
+}
+
+async fn delete_child(
+    State(state): State<AppState>,
+    Path((id_parent, id_child)): Path<(i64, i64)>,
+) -> impl IntoResponse {
+    info!("pbs_srv::delete_child({id_parent}, {id_parent})");
+    state
+        .store
+        .remove_child(id_parent, id_child)
+        .map_err(|_e| Error::StoreError)
 }
