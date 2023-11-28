@@ -8,6 +8,7 @@ use axum::{
 pub use pbs_core::*;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, sync::Arc};
+use tokio::net::TcpListener;
 use tracing::{info, warn};
 
 pub enum Error {
@@ -51,12 +52,9 @@ pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
         .fallback(fallback)
         .with_state(store_state);
 
-    // run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 
     Ok(())
 }

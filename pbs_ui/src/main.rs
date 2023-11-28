@@ -7,9 +7,7 @@ mod components;
 mod service;
 
 fn main() {
-    println!("main()");
-
-    let rt = Runtime::new().unwrap();
+    let rt = Runtime::new().expect("Can't create Tokyio::Runtime");
     rt.block_on(async move {
         tracing_subscriber::fmt::init();
 
