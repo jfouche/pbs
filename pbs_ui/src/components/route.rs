@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use dioxus_desktop::use_global_shortcut;
 use dioxus_router::prelude::*;
 
 use crate::components::panel_edit_item::panel_edit_item;
@@ -91,6 +92,20 @@ fn PageNotFound(cx: Scope, route: Vec<String>) -> Element {
 
 #[inline_props]
 fn app_nest<'a>(cx: Scope, children: Element<'a>) -> Element {
+    let nav = use_navigator(cx);
+
+    let nav_shortcut = nav.to_owned();
+    use_global_shortcut(cx, "CTRL+N", move || {
+        nav_shortcut.push(Route::NewItem {});
+    });
+
+    let nav_shortcut = nav.to_owned();
+    use_global_shortcut(cx, "CTRL+F", move || {
+        nav_shortcut.push(Route::Search {
+            pattern: String::new(),
+        });
+    });
+
     render! {
         top_menu { },
         div {
