@@ -1,13 +1,17 @@
 use dioxus::prelude::*;
 
 use pbs_srv::Item;
+use tracing::warn;
 
 use crate::{
     components::commons::{item_descr, item_quantity},
-    service::{delete_child_service, load_children_service, load_item_service, search_coroutine},
+    service::{
+        add_child_service, delete_child_service, load_children_service, load_item_service,
+        search_coroutine,
+    },
 };
 
-use super::ItemIdProps;
+use super::{ItemIdChangeProps, ItemIdProps};
 
 pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
     let item_future = use_future(cx, (), |_| load_item_service(cx.props.id));
@@ -44,7 +48,10 @@ pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
                         }
                     }
                     hr {}
-                    panel_update { }
+                    panel_update {
+                        id: cx.props.id,
+                        on_change: move |_| { warn!("YOUYOU - 1"); children_future.restart(); }
+                    }
                 ),
                 None => rsx!(p { "loading" })
             }
@@ -52,7 +59,7 @@ pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
     }
 }
 
-fn panel_update(cx: Scope) -> Element {
+fn panel_update<'a>(cx: Scope<'a, ItemIdChangeProps<'a>>) -> Element {
     let results = use_state(cx, Vec::<Item>::new);
     let message = use_state(cx, String::new);
     let search_handler = use_coroutine(cx, |rx| {
@@ -63,7 +70,6 @@ fn panel_update(cx: Scope) -> Element {
         div {
             input {
                 class: "w3-border w3-padding",
-                list: "results",
                 oninput: move |evt| {
                     let pattern = evt.value.to_owned();
                     if pattern.len() > 2 {
@@ -71,22 +77,67 @@ fn panel_update(cx: Scope) -> Element {
                     }
                 }
             }
-            datalist {
-                id:"results",
-                results.iter().map(|item| {
-                    rsx! {
-                        option {
-                            value: "{item.id()}",
-                            label: "{item.name()} {item.pn()}-{item.version():03}"
-                        }
-                    }
-                })
+        }
+        match results.len() {
+            0 => rsx!( "Enter pattern" ),
+            _ => rsx!( search_results {
+                parent_id: cx.props.id,
+                items: results,
+                on_child_added: move |_| { warn!("YOUYOU - 2"); cx.props.on_change.call(());}
+            }),
+        }
+        div { "{message}"}
+    }
+}
+
+#[derive(Props)]
+struct SearchResultsProps<'a> {
+    parent_id: i64,
+    items: &'a Vec<Item>,
+    on_child_added: EventHandler<'a>,
+}
+
+fn search_results<'a>(cx: Scope<'a, SearchResultsProps<'a>>) -> Element {
+    render!(
+        ul {
+            cx.props.items.iter().map(|item| rsx! {
+                item_row {
+                    parent_id: cx.props.parent_id,
+                    item: item,
+                    on_child_added: move |_| {warn!("YOUYOU - 3"); cx.props.on_child_added.call(());}
+                }
+            })
+        }
+    )
+}
+
+#[derive(Props)]
+struct ItemRowProps<'a> {
+    parent_id: i64,
+    item: &'a Item,
+    on_child_added: EventHandler<'a>,
+}
+
+fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
+    let quantity = use_state(cx, || 1);
+    render!(
+        li {
+            item_descr { item: cx.props.item.clone() },
+            input {
+                r#type: "number",
+                value: "{quantity}",
+                oninput: move |evt| quantity.set(evt.value.parse::<usize>().unwrap()),
 
             }
             button {
                 class: "w3-button w3-theme",
-                "Add child"
+                onclick: move |_| {
+                    add_child_service(cx, cx.props.parent_id, cx.props.item.id(), **quantity);
+                    warn!("YOUYOU - 4");
+                    cx.props.on_child_added.call(());
+                },
+                "Add"
             }
         }
-    }
+    )
 }

@@ -107,6 +107,12 @@ pub struct ItemMake {
     pub name: String,
 }
 
+impl ItemMake {
+    pub fn url(&self, base_url: &str) -> String {
+        format!("{base_url}/item/make")
+    }
+}
+
 /// `/item/make`
 async fn item_make(
     State(state): State<AppState>,
@@ -144,7 +150,10 @@ async fn get_item_children(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> impl IntoResponse {
-    info!("get_item_children({id})");
+    info!(
+        "get_item_children({id}) => {} items",
+        state.store.children(id).map(|c| c.len()).unwrap_or(9999)
+    );
     state
         .store
         .children(id)

@@ -1,8 +1,8 @@
-use pbs_srv::{Children, Item, ItemBuy, ItemMake};
+use pbs_srv::{AddChild, Children, Item, ItemBuy, ItemMake};
 
 pub static BASE_API_URL: &str = "http://localhost:3030";
 
-/// GET /search?pattern=<pattern>
+/// GET /search?pattern={pattern}
 pub async fn search_items(pattern: &str) -> Result<Vec<Item>, reqwest::Error> {
     let pattern = urlencoding::encode(pattern);
     let url = format!("{BASE_API_URL}/search?pattern={pattern}");
@@ -12,13 +12,12 @@ pub async fn search_items(pattern: &str) -> Result<Vec<Item>, reqwest::Error> {
 
 /// `POST /item/make { name: string }`
 pub async fn item_make(name: &str) -> Result<Item, reqwest::Error> {
-    let url = format!("{BASE_API_URL}/item/make");
     let new_item = ItemMake {
         name: name.to_string(),
     };
     let client = reqwest::Client::new();
     let item = client
-        .post(&url)
+        .post(new_item.url(BASE_API_URL))
         .json(&new_item)
         .send()
         .await?
@@ -68,4 +67,17 @@ pub async fn delete_child(id_parent: i64, id_child: i64) -> Result<bool, reqwest
         .send()
         .await?;
     Ok(true)
+}
+
+/// `POST /item/:id_parent/child { id: i64, quantity: usize }`
+pub async fn add_child(
+    id_parent: i64,
+    id_child: i64,
+    quantity: usize,
+) -> Result<(), reqwest::Error> {
+    let url = format!("{BASE_API_URL}/item/{id_parent}/child");
+    let add_child = AddChild { id_child, quantity };
+    let client = reqwest::Client::new();
+    client.post(&url).json(&add_child).send().await?;
+    Ok(())
 }

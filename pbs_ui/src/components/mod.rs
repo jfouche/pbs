@@ -9,7 +9,7 @@ mod route;
 mod top_menu;
 
 pub use app::app;
-use dioxus::core_macro::Props;
+use dioxus::{core::prelude::EventHandler, core_macro::Props};
 use pbs_srv::Item;
 
 // COMMON PROPS
@@ -22,4 +22,10 @@ pub struct ItemIdProps {
 #[derive(Props, PartialEq)]
 pub struct ItemRefProps<'a> {
     item: &'a Item,
+}
+
+#[derive(Props)]
+pub struct ItemIdChangeProps<'a, T = ()> {
+    pub id: i64,
+    pub on_change: EventHandler<'a, T>,
 }

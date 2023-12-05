@@ -182,14 +182,14 @@ impl Store {
         self.db()?.write_config(key, value)
     }
 
-    /// Create a new [ItemType::Make] [Item], allocating a new PN
+    /// Create a new [Strategy::Make] [Item], allocating a new PN
     pub fn make_item(&self, name: &str) -> Result<Item> {
         let db = self.db()?;
         let pn = simple_8digits_pn_provider(&db)?;
         db.new_make_item(&pn, name)
     }
 
-    /// Create a new [ItemType::Buy] [Item]
+    /// Create a new [Strategy::Buy] [Item]
     pub fn buy_item(&self, pn: &str, name: &str) -> Result<Item> {
         self.db()?.new_buy_item(pn, name)
     }

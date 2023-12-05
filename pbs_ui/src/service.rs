@@ -103,3 +103,16 @@ pub fn delete_child_service<T>(cx: Scope<T>, id_parent: i64, id_child: i64) {
         }
     })
 }
+
+pub fn add_child_service<T>(cx: Scope<T>, id_parent: i64, id_child: i64, quantity: usize) {
+    cx.spawn({
+        async move {
+            match client::add_child(id_parent, id_child, quantity).await {
+                Ok(_) => {}
+                Err(e) => {
+                    eprint!("ERROR : {e:?}");
+                }
+            }
+        }
+    })
+}
