@@ -4,6 +4,7 @@ use rusqlite::{
     Connection, ToSql,
 };
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 pub struct Database(Connection);
 
@@ -248,6 +249,7 @@ impl Database {
         version: usize,
         strategy: Strategy,
     ) -> Result<Item> {
+        info!("insert_item({pn}, {name}, {version}, {strategy})");
         let maturity = match strategy {
             Strategy::Make => ItemMaturity::InProgress,
             Strategy::Buy => ItemMaturity::Released,
@@ -285,6 +287,7 @@ impl Database {
 
     /// Retrive all [Item]s
     pub(crate) fn items(&self) -> Result<Vec<Item>> {
+        info!("items()");
         let mut stmt = self.prepare("SELECT * FROM items").convert()?;
         let items = stmt
             .query_map([], |row| Item::try_from(row))
@@ -311,6 +314,7 @@ impl Database {
 
     /// Get an `Item` by it's ID
     pub fn item(&self, id: i64) -> Result<Item> {
+        info!("item({id})");
         let mut stmt = self
             .prepare("SELECT * FROM items WHERE id = ?1")
             .convert()?;
@@ -319,6 +323,7 @@ impl Database {
 
     /// Add a child to an item
     pub(crate) fn add_child(&self, parent_id: i64, child_id: i64, quantity: usize) -> Result<()> {
+        info!("add_child({parent_id}, {child_id}, {quantity})");
         if self
             .execute(
                 "INSERT INTO children (id_parent, id_child, quantity) VALUES(?1, ?2, ?3)",
@@ -334,6 +339,7 @@ impl Database {
 
     /// Delete a child (all its quantity) from an item
     pub(crate) fn delete_child(&self, parent_id: i64, child_id: i64) -> Result<()> {
+        info!("delete_child({parent_id}, {child_id})");
         if self
             .execute(
                 "DELETE FROM children WHERE id_parent = ?1 and id_child = ?2",
@@ -349,6 +355,7 @@ impl Database {
 
     /// Get children of an item
     pub(crate) fn children(&self, parent_id: i64) -> Result<Vec<(Item, usize)>> {
+        info!("children({parent_id})");
         let mut stmt = self
             .prepare("SELECT * FROM view_children WHERE id_parent = ?1")
             .convert()?;
@@ -366,6 +373,7 @@ impl Database {
 
     /// Return all parent [Item]s using item `id`
     pub(crate) fn where_used(&self, id: i64) -> Result<Vec<Item>> {
+        info!("where_used({id})");
         let mut stmt = self
             .prepare("SELECT * FROM view_where_used WHERE id_child = ?1")
             .convert()?;
@@ -379,6 +387,7 @@ impl Database {
 
     /// Search for items match pn or name columns
     pub fn search(&self, pattern: &str) -> Result<Vec<Item>> {
+        info!("search({pattern})");
         let mut stmt = self
             .prepare("SELECT * FROM items WHERE pn LIKE ?1 or name LIKE ?1 ORDER BY pn")
             .convert()?;
@@ -392,6 +401,7 @@ impl Database {
 
     /// Release an Item
     pub fn release(&self, id: i64) -> Result<Item> {
+        info!("release({id})");
         if self
             .execute(
                 "UPDATE items set maturity=(?1) where id=(?2)",
@@ -407,6 +417,7 @@ impl Database {
 
     /// Make an Item [ItemMaturity::Obsolete]
     pub fn make_obsolete(&self, id: i64) -> Result<Item> {
+        info!("make_obsolete({id})");
         if self
             .execute(
                 "UPDATE items set maturity=(?1) where id=(?2)",

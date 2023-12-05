@@ -34,14 +34,14 @@ pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
                                     li {
                                         item_descr { item: child.item.clone() }
                                         item_quantity { quantity: child.quantity }
-                                    }
-                                    button {
-                                        class: "w3-button w3-theme",
-                                        onclick: move |_| {
-                                            delete_child_service(cx, item.id(), child.id());
-                                            children_future.restart();
-                                        },
-                                        "Delete"
+                                        button {
+                                            class: "w3-button w3-theme",
+                                            onclick: move |_| {
+                                                delete_child_service(cx, item.id(), child.id());
+                                                children_future.restart();
+                                            },
+                                            "Delete"
+                                        }
                                     }
                                 })
                              }
@@ -99,7 +99,8 @@ struct SearchResultsProps<'a> {
 
 fn search_results<'a>(cx: Scope<'a, SearchResultsProps<'a>>) -> Element {
     render!(
-        ul {
+        div {
+            style: "display: grid; width: 100%; grid-template-columns: 1fr 100px 80px;",
             cx.props.items.iter().map(|item| rsx! {
                 item_row {
                     parent_id: cx.props.parent_id,
@@ -120,21 +121,30 @@ struct ItemRowProps<'a> {
 
 fn item_row<'a>(cx: Scope<'a, ItemRowProps<'a>>) -> Element {
     let quantity = use_state(cx, || 1);
+    let added = use_state(cx, || false);
+
+    if *added.get() {
+        cx.props.on_child_added.call(());
+        added.set(false);
+    }
+
     render!(
-        li {
-            item_descr { item: cx.props.item.clone() },
+        div {
+            item_descr { item: cx.props.item.clone() }
+        }
+        div {
             input {
                 r#type: "number",
                 value: "{quantity}",
                 oninput: move |evt| quantity.set(evt.value.parse::<usize>().unwrap()),
 
             }
+        }
+        div {
             button {
                 class: "w3-button w3-theme",
                 onclick: move |_| {
-                    add_child_service(cx, cx.props.parent_id, cx.props.item.id(), **quantity);
-                    warn!("YOUYOU - 4");
-                    cx.props.on_child_added.call(());
+                    add_child_service(cx, cx.props.parent_id, cx.props.item.id(), **quantity, added.to_owned());
                 },
                 "Add"
             }

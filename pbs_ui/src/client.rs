@@ -78,6 +78,12 @@ pub async fn add_child(
     let url = format!("{BASE_API_URL}/item/{id_parent}/child");
     let add_child = AddChild { id_child, quantity };
     let client = reqwest::Client::new();
-    client.post(&url).json(&add_child).send().await?;
+    let _ = client
+        .post(&url)
+        .json(&add_child)
+        .send()
+        .await?
+        .bytes()
+        .await;
     Ok(())
 }
