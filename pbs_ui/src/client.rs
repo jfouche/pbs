@@ -84,6 +84,14 @@ pub async fn add_child(
         .send()
         .await?
         .bytes()
-        .await;
+        .await?;
     Ok(())
+}
+
+/// `POST /item/:id_parent/release`
+pub async fn release_item(id: i64) -> Result<Item, reqwest::Error> {
+    let url = format!("{BASE_API_URL}/item/{id}/release");
+    let client = reqwest::Client::new();
+    let item = client.post(&url).send().await?.json::<Item>().await?;
+    Ok(item)
 }

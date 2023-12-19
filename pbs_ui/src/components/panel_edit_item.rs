@@ -1,21 +1,47 @@
 use dioxus::prelude::*;
 
-use pbs_srv::Item;
-use tracing::warn;
+use pbs_srv::{Item, ItemMaturity};
+use tracing::{info, warn};
 
 use crate::{
     components::commons::{item_descr, item_quantity},
     service::{
         add_child_service, delete_child_service, load_children_service, load_item_service,
-        search_coroutine,
+        release_item_coroutine, search_coroutine,
     },
 };
 
 use super::{ItemIdChangeProps, ItemIdProps};
 
 pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
+    info!("panel_edit_item()");
     let item_future = use_future(cx, (), |_| load_item_service(cx.props.id));
     let children_future = use_future(cx, (), |_| load_children_service(cx.props.id));
+
+    let released = use_state(cx, || Option::<Item>::None);
+    let release_future = use_coroutine(cx, |rx| release_item_coroutine(rx, released.to_owned()));
+
+    if let Some(_item) = released.get() {
+        info!("panel_edit_item - released");
+        released.set(None);
+        item_future.restart();
+    }
+
+    let can_release = match item_future.value() {
+        None => false,
+        Some(item) => {
+            if item.maturity() != ItemMaturity::InProgress {
+                false
+            } else {
+                match children_future.value() {
+                    None => false,
+                    Some(children) => children.into_iter().fold(true, |acc, child| {
+                        acc & (child.maturity() == ItemMaturity::Released)
+                    }),
+                }
+            }
+        }
+    };
 
     render! {
         div {
@@ -24,6 +50,14 @@ pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
                 Some(item) => rsx!(
                     h2 {
                         "Item : {item.name()}"
+                        if can_release {
+                            rsx!{button {
+                                class: "w3-button w3-theme",
+                                onclick: move |_| release_future.send(cx.props.id),
+                                "Release"
+                            }}
+
+                        }
                     }
                     item_descr { item: item.clone() },
                     match children_future.value() {

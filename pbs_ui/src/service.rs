@@ -122,3 +122,18 @@ pub fn add_child_service<T>(
         }
     })
 }
+
+pub async fn release_item_coroutine(
+    mut rx: UnboundedReceiver<i64>,
+    released: UseState<Option<Item>>,
+) {
+    while let Some(id) = rx.next().await {
+        match client::release_item(id).await {
+            Ok(item) => released.set(Some(item)),
+            Err(e) => {
+                eprint!("ERROR : {e:?}");
+                todo!()
+            }
+        }
+    }
+}

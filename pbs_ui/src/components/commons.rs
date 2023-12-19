@@ -6,6 +6,7 @@ use dioxus_free_icons::{
     Icon,
 };
 use pbs_srv::{Item, ItemMaturity, Strategy};
+use tracing::info;
 
 #[derive(Props, PartialEq)]
 pub struct ItemProps {
@@ -13,6 +14,7 @@ pub struct ItemProps {
 }
 
 pub fn item_descr(cx: Scope<ItemProps>) -> Element {
+    info!("item_descr({})", cx.props.item.id());
     render! {
         span {
             class: "item-desc",

@@ -47,6 +47,7 @@ pub async fn serve(port: u16) -> std::result::Result<(), pbs_core::Error> {
         .route("/item/:id/children", get(get_item_children))
         .route("/item/:id_parent/child", post(add_child))
         .route("/item/:id_parent/child/:id_child", delete(delete_child))
+        .route("/item/:id/release", post(release_item))
         .route("/list", get(list))
         .route("/search", get(search))
         .fallback(fallback)
@@ -190,4 +191,14 @@ async fn delete_child(
         .store
         .remove_child(id_parent, id_child)
         .map_err(|_e| Error::StoreError)
+}
+
+/// `/item/:id_parent/release`
+async fn release_item(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {
+    info!("release_item({id})");
+    state
+        .store
+        .release(id)
+        .map_err(|_e| Error::StoreError)
+        .map(Json)
 }
