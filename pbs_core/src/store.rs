@@ -101,6 +101,7 @@ impl<'a> From<ChildRef<'a>> for Child {
 // ==================================================================
 // Report
 // ==================================================================
+#[derive(Serialize, Deserialize)]
 pub struct Report(HashMap<i64, (Item, usize)>);
 
 impl Report {

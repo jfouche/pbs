@@ -3,6 +3,7 @@ use dioxus_desktop::use_global_shortcut;
 use dioxus_router::prelude::*;
 
 use crate::components::panel_edit_item::panel_edit_item;
+use crate::components::panel_item_report::panel_item_report;
 use crate::components::panel_new_item::panel_new_item;
 use crate::components::panel_recently_use::panel_recently_use;
 use crate::components::panel_search::panel_search;
@@ -29,6 +30,9 @@ pub enum Route {
 
     #[route("/item/:id/edit")]
     EditItem { id: i64 },
+
+    #[route("/item/:id/report")]
+    ItemReport { id: i64 },
 
     // PageNotFound is a catch all route that will match any route and placing the matched segments in the route field
     #[route("/:..route")]
@@ -78,6 +82,14 @@ fn EditItem(cx: Scope, id: i64) -> Element {
     }
 }
 
+#[inline_props]
+fn ItemReport(cx: Scope, id: i64) -> Element {
+    render! {
+        app_nest {
+            panel_item_report { id: *id }
+        }
+    }
+}
 #[inline_props]
 fn PageNotFound(cx: Scope, route: Vec<String>) -> Element {
     render! {

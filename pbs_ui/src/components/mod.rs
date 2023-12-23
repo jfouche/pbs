@@ -1,6 +1,7 @@
 mod app;
 mod commons;
 mod panel_edit_item;
+mod panel_item_report;
 mod panel_new_item;
 mod panel_recently_use;
 mod panel_search;

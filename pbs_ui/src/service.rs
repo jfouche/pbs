@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
-use pbs_srv::{Child, Children, Item};
+use pbs_srv::{Child, Children, Item, Report};
 
 use crate::client;
 
@@ -55,6 +55,17 @@ pub async fn buy_item_coroutine(
 pub async fn load_item_service(id: i64) -> Item {
     match client::item(id).await {
         Ok(item) => item,
+        Err(e) => {
+            eprint!("ERROR : {e:?}");
+            todo!()
+        }
+    }
+}
+
+///
+pub async fn load_report_service(id: i64) -> Report {
+    match client::item_report(id).await {
+        Ok(report) => report,
         Err(e) => {
             eprint!("ERROR : {e:?}");
             todo!()

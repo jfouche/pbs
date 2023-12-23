@@ -49,7 +49,7 @@ pub fn panel_edit_item(cx: Scope<ItemIdProps>) -> Element {
             match item_future.value() {
                 Some(item) => rsx!(
                     h2 {
-                        "Item : {item.name()}"
+                        "Editing item : {item.name()}"
                         if can_release {
                             rsx!{button {
                                 class: "w3-button w3-theme",

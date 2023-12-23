@@ -1,4 +1,4 @@
-use pbs_srv::{AddChild, Children, Item, ItemBuy, ItemMake};
+use pbs_srv::{AddChild, Children, Item, ItemBuy, ItemMake, Report};
 
 pub static BASE_API_URL: &str = "http://localhost:3030";
 
@@ -94,4 +94,12 @@ pub async fn release_item(id: i64) -> Result<Item, reqwest::Error> {
     let client = reqwest::Client::new();
     let item = client.post(&url).send().await?.json::<Item>().await?;
     Ok(item)
+}
+
+/// `GET /item/:id/report`
+pub async fn item_report(id: i64) -> Result<Report, reqwest::Error> {
+    let url = format!("{BASE_API_URL}/item/{id}/report");
+    let client = reqwest::Client::new();
+    let report = client.get(&url).send().await?.json::<Report>().await?;
+    Ok(report)
 }

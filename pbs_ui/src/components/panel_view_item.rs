@@ -43,6 +43,11 @@ fn item_title<'a>(cx: Scope<'a, ItemRefProps<'a>>) -> Element {
                         to: Route::EditItem { id: item.id() },
                         "Edit"
                     }
+                    Link {
+                        class: "w3-button w3-theme",
+                        to: Route::ItemReport { id: item.id() },
+                        "Report"
+                    }
                 }
             }
         }
