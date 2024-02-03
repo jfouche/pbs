@@ -1,4 +1,4 @@
 [workspace]
-members = ["pbs_core", "pbs_repl", "pbs_srv", "pbs_ui"]
-default-members = ["pbs_ui"]
+members = ["pbs_core", "pbs_repl", "pbs_srv", "pbs_ui", "pbs_tui"]
+default-members = ["pbs_tui"]
 resolver = "2"
