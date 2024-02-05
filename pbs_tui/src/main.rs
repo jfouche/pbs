@@ -5,50 +5,11 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     execute, style, terminal,
 };
+use page::Page;
 use screen::Screen;
 
+mod page;
 mod screen;
-
-enum Page {
-    Search(PageSeach),
-}
-
-impl Page {
-    fn home() -> Self {
-        Page::Search(PageSeach::new())
-    }
-
-    fn display(&mut self, w: &mut Screen) {
-        match self {
-            Page::Search(page) => page.display(w),
-        }
-    }
-
-    fn handle_event(&mut self, event: Event) {
-        match self {
-            Page::Search(page) => page.handle_event(event),
-        }
-    }
-}
-
-struct PageSeach {
-    pattern: String,
-}
-
-impl PageSeach {
-    fn new() -> Self {
-        PageSeach {
-            pattern: "".to_string(),
-        }
-    }
-
-    fn display(&mut self, screen: &mut Screen) {
-        screen.display_title("SEARCH");
-        screen.put_str("Pattern", 1, 3);
-    }
-
-    fn handle_event(&mut self, event: Event) {}
-}
 
 struct App<'a, W> {
     w: &'a mut W,

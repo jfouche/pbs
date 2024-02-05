@@ -18,6 +18,10 @@ impl Screen {
         }
     }
 
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
     fn idx(&self, x: usize, y: usize) -> usize {
         y * self.width + x
     }
@@ -47,10 +51,6 @@ impl Screen {
         }
     }
 
-    pub fn display_title(&mut self, title: &str) {
-        self.put_str(title, self.width / 2 - title.len() / 2, 0);
-    }
-
     pub fn render(&self, w: &mut impl io::Write) -> io::Result<()> {
         queue!(w, cursor::MoveTo(0, 0), style::Print('c'))?;
         for (i, c) in self.current.iter().enumerate() {
@@ -67,5 +67,34 @@ impl Screen {
         // }
         w.flush()?;
         Ok(())
+    }
+}
+
+pub trait Widget {
+    fn display(&self, screen: &mut Screen);
+}
+
+impl Screen {
+    pub fn add(&mut self, w: impl Widget) {
+        w.display(self);
+    }
+}
+
+/// Display a title centered at the top of the screen.
+pub struct Title(pub String);
+
+impl Widget for Title {
+    fn display(&self, screen: &mut Screen) {
+        screen.put_str(&self.0, screen.width() / 2 - self.0.len() / 2, 0);
+    }
+}
+
+pub struct Paragraph(pub String);
+
+impl Widget for Paragraph {
+    fn display(&self, screen: &mut Screen) {
+        for (i, line) in self.0.lines().enumerate() {
+            screen.put_str(line, 0, i + 3);
+        }
     }
 }
