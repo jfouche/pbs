@@ -1,11 +1,28 @@
 mod paragraph;
+mod prompt;
+mod statusbar;
 mod title;
 
+use crossterm::event::Event;
 pub use paragraph::Paragraph;
+pub use prompt::Prompt;
+pub use statusbar::StatusBar;
 pub use title::Title;
 
 pub trait Widget {
     fn display(&self, buf: &mut Buffer);
+
+    fn handle_event(&mut self, _event: &Event) {}
+}
+
+impl<T: Widget> Widget for &mut T {
+    fn display(&self, buf: &mut Buffer) {
+        (**self).display(buf);
+    }
+
+    fn handle_event(&mut self, event: &Event) {
+        (**self).handle_event(event);
+    }
 }
 
 #[derive(Clone)]
@@ -32,6 +49,10 @@ impl Buffer {
         self.width
     }
 
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
     fn idx(&self, x: usize, y: usize) -> usize {
         y * self.width + x
     }
@@ -50,14 +71,22 @@ impl Buffer {
     }
 
     /// put a str on the screen. If the str go out of the screen, it will
-    /// print `...` to show ellision
+    /// print `…` to show ellision
+    // TODO : &self.current[x..x + s.len()].copy_from_slice(s[..]);
     pub fn put_str(&mut self, s: &str, x: usize, y: usize) {
         assert!(x < self.width && y < self.height);
-        if x + s.len() < self.width {
-            // TODO : &self.current[x..x + s.len()].copy_from_slice(s[..]);
+        if x + s.len() <= self.width {
+            // There is enough space in line
             for (i, c) in s.chars().enumerate() {
                 self.put_char(c, x + i, y);
             }
+        } else {
+            // The string is too long, limit it and append […]
+            let offset = self.width - x - 1; // -1 for ...
+            for (i, c) in s[0..offset].chars().enumerate() {
+                self.put_char(c, x + i, y);
+            }
+            self.put_char('…', x + offset, y);
         }
     }
 

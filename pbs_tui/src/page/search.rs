@@ -12,8 +12,6 @@ impl PageSeach {
             pattern: "".to_string(),
         }
     }
-
-    pub fn handle_event(&mut self, _event: Event) {}
 }
 
 impl Widget for PageSeach {
@@ -21,4 +19,6 @@ impl Widget for PageSeach {
         buf.add(Title("SEARCH".to_string()));
         buf.put_str("Pattern", 1, 3);
     }
+
+    fn handle_event(&mut self, _event: &Event) {}
 }

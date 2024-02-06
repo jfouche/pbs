@@ -1,3 +1,7 @@
+mod page;
+mod screen;
+mod widget;
+
 use std::{io, time::Duration};
 
 use crossterm::{
@@ -7,14 +11,36 @@ use crossterm::{
 };
 use page::Page;
 use screen::Screen;
+use widget::{Prompt, Widget};
 
-mod page;
-mod screen;
-mod widget;
+struct MainWindow {
+    page: Page,
+    prompt: Prompt,
+}
+
+impl MainWindow {
+    fn new() -> Self {
+        MainWindow {
+            page: Page::home(),
+            prompt: Prompt::new("> ".to_owned()),
+        }
+    }
+}
+
+impl Widget for MainWindow {
+    fn display(&self, buf: &mut widget::Buffer) {
+        self.page.display(buf);
+        self.prompt.display(buf);
+    }
+
+    fn handle_event(&mut self, event: &Event) {
+        self.page.handle_event(event);
+        self.prompt.handle_event(event);
+    }
+}
 
 struct App<'a, W> {
     w: &'a mut W,
-    page: Page,
     // store: Store,
 }
 
@@ -26,9 +52,33 @@ where
         // let store = Store::open("store.db3")?;
         Ok(App {
             w,
-            page: Page::home(),
             // store,
         })
+    }
+
+    fn run_loop(&mut self, mut screen: Screen) -> io::Result<()> {
+        let mut wnd = MainWindow::new();
+        loop {
+            // Display page
+            screen.add(&mut wnd);
+
+            // Handle event
+            if event::poll(Duration::from_millis(33))? {
+                // It's guaranteed that the `read()` won't block when the `poll()`
+                // function returns `true`
+                match event::read()? {
+                    Event::Key(ev)
+                        if ev.code == KeyCode::Char('x')
+                            && ev.modifiers.contains(KeyModifiers::CONTROL) =>
+                    {
+                        // Exit program
+                        return Ok(());
+                    }
+                    ev => wnd.handle_event(&ev),
+                }
+            }
+            screen.render(self.w)?;
+        }
     }
 
     pub fn run(&mut self) -> io::Result<()> {
@@ -42,30 +92,8 @@ where
         )?;
 
         let (width, height) = terminal::size()?;
-        let mut screen = Screen::new(width as usize, height as usize);
-
-        loop {
-            // Display page
-            screen.add(&self.page);
-
-            // Handle event
-            if event::poll(Duration::from_millis(33))? {
-                // It's guaranteed that the `read()` won't block when the `poll()`
-                // function returns `true`
-                match event::read()? {
-                    Event::Key(ev)
-                        if ev.code == KeyCode::Char('x')
-                            && ev.modifiers.contains(KeyModifiers::CONTROL) =>
-                    {
-                        break
-                    }
-                    ev => self.page.handle_event(ev),
-                }
-            }
-
-            screen.render(self.w)?;
-        }
-
+        let screen = Screen::new(width as usize, height as usize);
+        self.run_loop(screen)?;
         // cleanup
         execute!(
             self.w,

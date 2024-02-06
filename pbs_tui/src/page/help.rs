@@ -1,5 +1,3 @@
-use crossterm::event::Event;
-
 use crate::widget::{Buffer, Paragraph, Title, Widget};
 
 pub struct PageHelp {}
@@ -12,8 +10,6 @@ impl PageHelp {
     pub fn new() -> Self {
         PageHelp {}
     }
-
-    pub fn handle_event(&mut self, _event: Event) {}
 }
 
 impl Widget for PageHelp {
