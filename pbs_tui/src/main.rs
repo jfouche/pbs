@@ -10,6 +10,7 @@ use screen::Screen;
 
 mod page;
 mod screen;
+mod widget;
 
 struct App<'a, W> {
     w: &'a mut W,
@@ -31,7 +32,7 @@ where
     }
 
     pub fn run(&mut self) -> io::Result<()> {
-        // execute!(self.w, terminal::EnterAlternateScreen)?;
+        execute!(self.w, terminal::EnterAlternateScreen)?;
 
         terminal::enable_raw_mode()?;
         execute!(
@@ -45,7 +46,7 @@ where
 
         loop {
             // Display page
-            self.page.display(&mut screen);
+            screen.add(&self.page);
 
             // Handle event
             if event::poll(Duration::from_millis(33))? {
@@ -70,7 +71,7 @@ where
             self.w,
             style::ResetColor,
             cursor::Show,
-            // terminal::LeaveAlternateScreen
+            terminal::LeaveAlternateScreen
         )?;
 
         terminal::disable_raw_mode()?;

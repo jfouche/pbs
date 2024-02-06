@@ -1,6 +1,7 @@
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 
-use crate::screen::Screen;
+use crate::widget::Buffer;
+use crate::widget::Widget;
 
 use self::{help::PageHelp, search::PageSeach};
 
@@ -15,13 +16,6 @@ pub enum Page {
 impl Page {
     pub fn home() -> Self {
         Page::Help(PageHelp {})
-    }
-
-    pub fn display(&mut self, w: &mut Screen) {
-        match self {
-            Page::Help(page) => page.display(w),
-            Page::Search(page) => page.display(w),
-        }
     }
 
     pub fn handle_event(&mut self, event: Event) {
@@ -40,6 +34,15 @@ impl Page {
         match self {
             Page::Help(page) => page.handle_event(event),
             Page::Search(page) => page.handle_event(event),
+        }
+    }
+}
+
+impl Widget for &Page {
+    fn display(&self, buf: &mut Buffer) {
+        match self {
+            Page::Help(page) => page.display(buf),
+            Page::Search(page) => page.display(buf),
         }
     }
 }

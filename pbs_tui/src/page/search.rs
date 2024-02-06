@@ -1,6 +1,6 @@
 use crossterm::event::Event;
 
-use crate::screen::{Screen, Title};
+use crate::widget::{Buffer, Title, Widget};
 
 pub struct PageSeach {
     pub pattern: String,
@@ -13,10 +13,12 @@ impl PageSeach {
         }
     }
 
-    pub fn display(&mut self, screen: &mut Screen) {
-        screen.add(Title("SEARCH".to_string()));
-        screen.put_str("Pattern", 1, 3);
-    }
+    pub fn handle_event(&mut self, _event: Event) {}
+}
 
-    pub fn handle_event(&mut self, event: Event) {}
+impl Widget for PageSeach {
+    fn display(&self, buf: &mut Buffer) {
+        buf.add(Title("SEARCH".to_string()));
+        buf.put_str("Pattern", 1, 3);
+    }
 }
