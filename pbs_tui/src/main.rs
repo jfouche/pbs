@@ -2,7 +2,15 @@ mod page;
 mod screen;
 mod widget;
 
-use std::{io, time::Duration};
+use std::{
+    io,
+    sync::{
+        mpsc::{self, Sender},
+        Arc,
+    },
+    thread,
+    time::Duration,
+};
 
 use crossterm::{
     cursor,
@@ -10,11 +18,22 @@ use crossterm::{
     execute, style, terminal,
 };
 use page::Page;
+use pbs_core::{Item, Store};
 use screen::Screen;
-use widget::{Prompt, Widget};
+use widget::{Prompt, StatusBar, Widget};
+
+pub enum PbsAction {
+    Search(String),
+}
+
+enum PbsResponse {
+    Err(String),
+    Items(Vec<Item>),
+}
 
 struct MainWindow {
     page: Page,
+    status: StatusBar,
     prompt: Prompt,
 }
 
@@ -22,31 +41,47 @@ impl MainWindow {
     fn new() -> Self {
         MainWindow {
             page: Page::home(),
+            status: StatusBar::default(),
             prompt: Prompt::default(),
+        }
+    }
+
+    fn handle_response(&mut self, response: PbsResponse) {
+        match (response, &mut self.page) {
+            (PbsResponse::Err(err), _) => {
+                self.status.text = err;
+            }
+            (PbsResponse::Items(items), Page::Search(ref mut page)) => {
+                page.set_items(items);
+            }
+            _ => {}
         }
     }
 }
 
 impl Widget for MainWindow {
+    type Action = PbsAction;
+
     fn display(&self, buf: &mut widget::Buffer) {
         self.page.display(buf);
+        self.status.display(buf);
         self.prompt.display(buf);
     }
 
-    fn handle_event(&mut self, event: &Event) {
+    fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
         match self.page {
             Page::Help(_) => self.prompt.set_label("> "),
             Page::Search(_) => self.prompt.set_label("search> "),
         }
 
         self.page.handle_event(event);
-        self.prompt.handle_event(event);
+        self.prompt.handle_event(event)
     }
 }
 
 struct App<'a, W> {
     w: &'a mut W,
-    // store: Store,
+    store: Arc<Store>,
 }
 
 impl<'a, W> App<'a, W>
@@ -54,15 +89,16 @@ where
     W: io::Write,
 {
     pub fn new(w: &'a mut W) -> std::result::Result<Self, pbs_core::Error> {
-        // let store = Store::open("store.db3")?;
+        let store = Store::open("store.db3")?;
         Ok(App {
             w,
-            // store,
+            store: Arc::new(store),
         })
     }
 
     fn run_loop(&mut self, mut screen: Screen) -> io::Result<()> {
         let mut wnd = MainWindow::new();
+        let (tx, rx) = mpsc::channel();
         loop {
             // Display page
             screen.add(&mut wnd);
@@ -79,10 +115,36 @@ where
                         // Exit program
                         return Ok(());
                     }
-                    ev => wnd.handle_event(&ev),
+                    ev => {
+                        if let Some(action) = wnd.handle_event(&ev) {
+                            self.handle_action(action, tx.clone());
+                        }
+                    }
                 }
             }
+
+            if let Ok(response) = rx.try_recv() {
+                wnd.handle_response(response);
+            }
+
             screen.render(self.w)?;
+        }
+    }
+
+    fn handle_action(&mut self, action: PbsAction, tx: Sender<PbsResponse>) {
+        let store = self.store.clone();
+        match action {
+            PbsAction::Search(pattern) => {
+                thread::spawn(move || {
+                    let pattern = format!("%{pattern}%");
+                    match store.search_items(&pattern) {
+                        Ok(items) => {
+                            tx.send(PbsResponse::Items(items));
+                        }
+                        Err(_err) => todo!(),
+                    };
+                });
+            }
         }
     }
 

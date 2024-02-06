@@ -4,6 +4,7 @@ use super::{Buffer, Widget};
 pub struct Title(pub String);
 
 impl Widget for Title {
+    type Action = ();
     fn display(&self, screen: &mut Buffer) {
         screen.put_str(&self.0, screen.width() / 2 - self.0.len() / 2, 0);
     }

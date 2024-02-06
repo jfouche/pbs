@@ -1,11 +1,14 @@
 use super::{Buffer, Widget};
 
-pub struct StatusBar;
+#[derive(Default)]
+pub struct StatusBar {
+    pub text: String,
+}
 
 impl Widget for StatusBar {
+    type Action = ();
     fn display(&self, buf: &mut Buffer) {
-        // let line = "═".repeat(buf.width() - 1);
-        let line = "-".repeat(buf.width());
+        let line = format!("{}{}", self.text, "=".repeat(buf.width() - self.text.len()));
         buf.put_str(&line, 0, buf.height() - 2);
     }
 }

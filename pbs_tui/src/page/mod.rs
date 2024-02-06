@@ -2,15 +2,16 @@ use crossterm::event::{Event, KeyCode, KeyModifiers};
 
 use crate::widget::Buffer;
 use crate::widget::Widget;
+use crate::PbsAction;
 
-use self::{help::PageHelp, search::PageSeach};
+use self::{help::PageHelp, search::PageSearch};
 
 mod help;
 mod search;
 
 pub enum Page {
     Help(PageHelp),
-    Search(PageSeach),
+    Search(PageSearch),
 }
 
 impl Page {
@@ -20,6 +21,8 @@ impl Page {
 }
 
 impl Widget for Page {
+    type Action = PbsAction;
+
     fn display(&self, buf: &mut Buffer) {
         match self {
             Page::Help(page) => page.display(buf),
@@ -27,23 +30,26 @@ impl Widget for Page {
         }
     }
 
-    fn handle_event(&mut self, event: &Event) {
+    fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
         if let Event::Key(key) = event {
             if key.code == KeyCode::Char('s') && key.modifiers.contains(KeyModifiers::CONTROL) {
                 // CTRL-s : Shortcut to PageSeach
-                *self = Page::Search(PageSeach::new());
-                return;
+                *self = Page::Search(PageSearch::default());
+                return None;
             } else if key.code == KeyCode::Char('h')
                 && key.modifiers.contains(KeyModifiers::CONTROL)
             {
                 // CTRL-h : Shortcut to PageHelp
-                *self = Page::Help(PageHelp::new());
-                return;
+                *self = Page::Help(PageHelp);
+                return None;
             }
         }
 
         match self {
-            Page::Help(page) => page.handle_event(event),
+            Page::Help(page) => {
+                page.handle_event(event);
+                None
+            }
             Page::Search(page) => page.handle_event(event),
         }
     }
