@@ -75,7 +75,17 @@ impl Widget for MainWindow {
         }
 
         self.page.handle_event(event);
-        self.prompt.handle_event(event)
+        if let Some(text) = self.prompt.handle_event(event) {
+            match self.page {
+                Page::Search(_) => {
+                    if text.len() > 2 {
+                        return Some(PbsAction::Search(text));
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
     }
 }
 

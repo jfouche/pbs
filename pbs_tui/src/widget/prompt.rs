@@ -1,6 +1,4 @@
-use crossterm::event::{Event, KeyCode, KeyEventKind};
-
-use crate::PbsAction;
+use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 
 use super::{Buffer, Widget};
 
@@ -17,7 +15,7 @@ impl Prompt {
 }
 
 impl Widget for Prompt {
-    type Action = PbsAction;
+    type Action = String;
 
     fn display(&self, buf: &mut Buffer) {
         let s = format!("{}{}", self.label, self.input);
@@ -27,18 +25,21 @@ impl Widget for Prompt {
     fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
         match event {
             Event::Key(key_evt)
-                if key_evt.modifiers.is_empty() && key_evt.kind == KeyEventKind::Press =>
+                if !key_evt.modifiers.contains(KeyModifiers::CONTROL)
+                    && !key_evt.modifiers.contains(KeyModifiers::ALT)
+                    && key_evt.kind == KeyEventKind::Press =>
             {
                 match key_evt.code {
                     KeyCode::Char(c) => {
                         self.input.push(c);
+                        return Some(self.input.clone());
                     }
                     KeyCode::Backspace => {
                         self.input.pop();
                     }
                     KeyCode::Enter => {
                         self.input.clear();
-                        return Some(PbsAction::Search("TEST".to_owned()));
+                        return Some(self.input.clone());
                     }
                     _ => {}
                 }
