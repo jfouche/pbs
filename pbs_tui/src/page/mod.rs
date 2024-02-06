@@ -26,6 +26,7 @@ impl Widget for Page {
             Page::Search(page) => page.display(buf),
         }
     }
+
     fn handle_event(&mut self, event: &Event) {
         if let Event::Key(key) = event {
             if key.code == KeyCode::Char('s') && key.modifiers.contains(KeyModifiers::CONTROL) {

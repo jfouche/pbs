@@ -22,7 +22,7 @@ impl MainWindow {
     fn new() -> Self {
         MainWindow {
             page: Page::home(),
-            prompt: Prompt::new("> ".to_owned()),
+            prompt: Prompt::default(),
         }
     }
 }
@@ -34,6 +34,11 @@ impl Widget for MainWindow {
     }
 
     fn handle_event(&mut self, event: &Event) {
+        match self.page {
+            Page::Help(_) => self.prompt.set_label("> "),
+            Page::Search(_) => self.prompt.set_label("search> "),
+        }
+
         self.page.handle_event(event);
         self.prompt.handle_event(event);
     }

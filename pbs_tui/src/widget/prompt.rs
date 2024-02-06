@@ -2,17 +2,15 @@ use crossterm::event::{Event, KeyCode, KeyEventKind};
 
 use super::{Buffer, Widget};
 
+#[derive(Default)]
 pub struct Prompt {
     label: String,
     input: String,
 }
 
 impl Prompt {
-    pub fn new(label: String) -> Self {
-        Prompt {
-            label,
-            input: "".to_owned(),
-        }
+    pub fn set_label(&mut self, label: impl ToString) {
+        self.label = label.to_string();
     }
 }
 
