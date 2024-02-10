@@ -1,3 +1,4 @@
+mod main_wnd;
 mod page;
 mod screen;
 mod widget;
@@ -17,76 +18,20 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     execute, style, terminal,
 };
-use page::Page;
+use main_wnd::MainWindow;
 use pbs_core::{Item, Store};
 use screen::Screen;
-use widget::{Prompt, StatusBar, Widget};
+use widget::Widget;
 
 pub enum PbsAction {
     Search(String),
+    CreateItem(String),
 }
 
-enum PbsResponse {
+pub enum PbsResponse {
     Err(String),
     Items(Vec<Item>),
-}
-
-struct MainWindow {
-    page: Page,
-    status: StatusBar,
-    prompt: Prompt,
-}
-
-impl MainWindow {
-    fn new() -> Self {
-        MainWindow {
-            page: Page::home(),
-            status: StatusBar::default(),
-            prompt: Prompt::default(),
-        }
-    }
-
-    fn handle_response(&mut self, response: PbsResponse) {
-        match (response, &mut self.page) {
-            (PbsResponse::Err(err), _) => {
-                self.status.text = err;
-            }
-            (PbsResponse::Items(items), Page::Search(ref mut page)) => {
-                page.set_items(items);
-            }
-            _ => {}
-        }
-    }
-}
-
-impl Widget for MainWindow {
-    type Action = PbsAction;
-
-    fn display(&self, buf: &mut widget::Buffer) {
-        self.page.display(buf);
-        self.status.display(buf);
-        self.prompt.display(buf);
-    }
-
-    fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
-        match self.page {
-            Page::Help(_) => self.prompt.set_label("> "),
-            Page::Search(_) => self.prompt.set_label("search> "),
-        }
-
-        self.page.handle_event(event);
-        if let Some(text) = self.prompt.handle_event(event) {
-            match self.page {
-                Page::Search(_) => {
-                    if text.len() > 2 {
-                        return Some(PbsAction::Search(text));
-                    }
-                }
-                _ => {}
-            }
-        }
-        None
-    }
+    Item(Item),
 }
 
 struct App<'a, W> {
@@ -147,12 +92,20 @@ where
             PbsAction::Search(pattern) => {
                 thread::spawn(move || {
                     let pattern = format!("%{pattern}%");
-                    match store.search_items(&pattern) {
-                        Ok(items) => {
-                            tx.send(PbsResponse::Items(items));
-                        }
-                        Err(_err) => todo!(),
+                    let response = match store.search_items(&pattern) {
+                        Ok(items) => PbsResponse::Items(items),
+                        Err(err) => PbsResponse::Err(format!("{err:?}")),
                     };
+                    tx.send(response).expect("Invalid thread state");
+                });
+            }
+            PbsAction::CreateItem(name) => {
+                thread::spawn(move || {
+                    let response = match store.make_item(&name) {
+                        Ok(item) => PbsResponse::Item(item),
+                        Err(err) => PbsResponse::Err(format!("{err:?}")),
+                    };
+                    tx.send(response).expect("Invalid thread state");
                 });
             }
         }

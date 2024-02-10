@@ -5,7 +5,7 @@ mod title;
 
 use crossterm::event::Event;
 pub use paragraph::Paragraph;
-pub use prompt::Prompt;
+pub use prompt::{Prompt, PromptEvent};
 pub use statusbar::StatusBar;
 pub use title::Title;
 

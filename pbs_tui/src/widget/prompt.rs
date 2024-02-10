@@ -8,6 +8,11 @@ pub struct Prompt {
     input: String,
 }
 
+pub enum PromptEvent {
+    Updated(String),
+    Entered(String),
+}
+
 impl Prompt {
     pub fn set_label(&mut self, label: impl ToString) {
         self.label = label.to_string();
@@ -15,7 +20,7 @@ impl Prompt {
 }
 
 impl Widget for Prompt {
-    type Action = String;
+    type Action = PromptEvent;
 
     fn display(&self, buf: &mut Buffer) {
         let s = format!("{}{}", self.label, self.input);
@@ -32,14 +37,16 @@ impl Widget for Prompt {
                 match key_evt.code {
                     KeyCode::Char(c) => {
                         self.input.push(c);
-                        return Some(self.input.clone());
+                        return Some(PromptEvent::Updated(self.input.clone()));
                     }
                     KeyCode::Backspace => {
                         self.input.pop();
+                        return Some(PromptEvent::Updated(self.input.clone()));
                     }
                     KeyCode::Enter => {
+                        let input = self.input.clone();
                         self.input.clear();
-                        return Some(self.input.clone());
+                        return Some(PromptEvent::Entered(input));
                     }
                     _ => {}
                 }
