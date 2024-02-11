@@ -30,7 +30,7 @@ impl MainWindow {
                 page.set_items(items);
             }
             (PbsResponse::Item(item), Page::MakeItem(ref mut _page)) => {
-                self.status.text = format!("Item {} created", item.pn());
+                self.status.text = format!("{item} created");
             }
             _ => {}
         }
