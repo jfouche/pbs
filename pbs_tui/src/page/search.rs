@@ -2,7 +2,7 @@ use crate::{
     widget::{Buffer, Title, Widget},
     PbsAction,
 };
-use crossterm::event::Event;
+use crossterm::{event::Event, style::Color};
 use pbs_core::Item;
 
 #[derive(Default)]
@@ -23,7 +23,7 @@ impl Widget for PageSearch {
         buf.add(Title("SEARCH".to_string()));
 
         for (i, item) in self.items.iter().enumerate() {
-            buf.put_str(item.name(), 1, i + 3);
+            buf.put_str(item.name(), 1, i + 3, Color::Black, Color::White);
         }
     }
 

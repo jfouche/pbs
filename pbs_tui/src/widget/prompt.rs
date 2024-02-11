@@ -1,4 +1,7 @@
-use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::{
+    event::{Event, KeyCode, KeyEventKind, KeyModifiers},
+    style::Color,
+};
 
 use super::{Buffer, Widget};
 
@@ -24,7 +27,7 @@ impl Widget for Prompt {
 
     fn display(&self, buf: &mut Buffer) {
         let s = format!("{}{}", self.label, self.input);
-        buf.put_str(&s, 0, buf.height() - 1);
+        buf.put_str(&s, 0, buf.height() - 1, Color::Black, Color::White);
     }
 
     fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
