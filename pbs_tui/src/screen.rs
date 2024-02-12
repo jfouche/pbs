@@ -46,9 +46,18 @@ impl Screen {
             w.queue(cursor::MoveTo(patch.x as u16, patch.y as u16))?
                 .queue(style::Print(cell.c))?;
         }
+
+        if self.previous_buffer.cursor() != self.current_buffer.cursor() {
+            let (x, y) = self.current_buffer.cursor();
+            w.queue(cursor::MoveTo(x as u16, y as u16))?;
+        }
+
+        w.flush()?;
+
+        // Double buffering
         self.previous_buffer = self.current_buffer.clone();
         self.current_buffer.reset();
-        w.flush()?;
+
         Ok(())
     }
 

@@ -119,6 +119,7 @@ where
             self.w,
             style::ResetColor,
             terminal::Clear(terminal::ClearType::All),
+            cursor::SetCursorStyle::BlinkingUnderScore
         )?;
 
         let (width, height) = terminal::size()?;

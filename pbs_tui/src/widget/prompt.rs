@@ -27,7 +27,9 @@ impl Widget for Prompt {
 
     fn display(&self, buf: &mut Buffer) {
         let s = format!("{}{}", self.label, self.input);
-        buf.put_str(&s, 0, buf.height() - 1, Color::Black, Color::White);
+        let y = buf.height() - 1;
+        let next_x = buf.put_str(&s, 0, y, Color::Black, Color::White);
+        buf.set_cursor(next_x, y)
     }
 
     fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {

@@ -52,6 +52,7 @@ pub struct Buffer {
     width: usize,
     height: usize,
     buf: Vec<Cell>,
+    cursor: (usize, usize),
 }
 
 impl Buffer {
@@ -60,6 +61,7 @@ impl Buffer {
             width,
             height,
             buf: vec![Cell::default(); width * height],
+            cursor: (0, 0),
         }
     }
 
@@ -77,6 +79,14 @@ impl Buffer {
 
     pub fn height(&self) -> usize {
         self.height
+    }
+
+    pub fn cursor(&self) -> (usize, usize) {
+        self.cursor
+    }
+
+    pub fn set_cursor(&mut self, x: usize, y: usize) {
+        self.cursor = (x, y);
     }
 
     fn idx(&self, x: usize, y: usize) -> usize {
@@ -103,13 +113,22 @@ impl Buffer {
     /// put a str on the screen. If the str go out of the screen, it will
     /// print `…` to show ellision
     // TODO : &self.current[x..x + s.len()].copy_from_slice(s[..]);
-    pub fn put_str(&mut self, s: &str, x: usize, y: usize, bg_color: Color, fg_color: Color) {
+    // Returns the x position at the end of the str
+    pub fn put_str(
+        &mut self,
+        s: &str,
+        x: usize,
+        y: usize,
+        bg_color: Color,
+        fg_color: Color,
+    ) -> usize {
         assert!(x < self.width && y < self.height);
         if x + s.len() <= self.width {
             // There is enough space in line
             for (i, c) in s.chars().enumerate() {
                 self.put_char(c, x + i, y, bg_color, fg_color);
             }
+            x + s.len()
         } else {
             // The string is too long, limit it and append […]
             let offset = self.width - x - 1; // -1 for ...
@@ -117,6 +136,7 @@ impl Buffer {
                 self.put_char(c, x + i, y, bg_color, fg_color);
             }
             self.put_char('…', x + offset, y, bg_color, fg_color);
+            self.width
         }
     }
 
