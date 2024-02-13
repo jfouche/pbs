@@ -3,30 +3,19 @@ mod prompt;
 mod statusbar;
 mod title;
 
-use crossterm::{event::Event, style::Color};
+use crossterm::style::Color;
 pub use paragraph::Paragraph;
 pub use prompt::{Prompt, PromptEvent};
 pub use statusbar::StatusBar;
 pub use title::Title;
 
 pub trait Widget {
-    type Action;
-
     fn display(&self, buf: &mut Buffer);
-
-    fn handle_event(&mut self, _event: &Event) -> Option<Self::Action> {
-        None
-    }
 }
 
 impl<T: Widget> Widget for &mut T {
-    type Action = T::Action;
     fn display(&self, buf: &mut Buffer) {
         (**self).display(buf);
-    }
-
-    fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
-        (**self).handle_event(event)
     }
 }
 

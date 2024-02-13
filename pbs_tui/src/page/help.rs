@@ -9,7 +9,6 @@ CTRL-b : Create a new BUY item
 CTRL-x : Exit application"#;
 
 impl Widget for PageHelp {
-    type Action = ();
     fn display(&self, buf: &mut Buffer) {
         buf.add(Title("HELP".to_string()));
         buf.add(Paragraph(HELP_TEXT.to_string()));

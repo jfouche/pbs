@@ -1,7 +1,7 @@
 use crossterm::{
     cursor,
     style::{self, Color, SetBackgroundColor},
-    QueueableCommand,
+    terminal, QueueableCommand,
 };
 use std::io;
 
@@ -63,9 +63,17 @@ impl Screen {
         //     w.queue(cursor::MoveTo(10, 2))?.queue(style::Print(debug))?;
         // }
 
-        if self.previous_buffer.cursor() != self.current_buffer.cursor() {
-            let (x, y) = self.current_buffer.cursor();
-            w.queue(cursor::MoveTo(x as u16, y as u16))?;
+        // Position the cursor
+        let (x, y) = self.current_buffer.cursor();
+        match cursor::position().map(|(x, y)| (x as usize, y as usize)) {
+            Ok((tx, ty)) => {
+                if (x, y) != (tx, ty) {
+                    w.queue(cursor::MoveTo(x as u16, y as u16))?;
+                } else if (x, y) != self.previous_buffer.cursor() {
+                    w.queue(cursor::MoveTo(tx as u16, ty as u16))?;
+                }
+            }
+            Err(_) => unreachable!(),
         }
 
         w.flush()?;

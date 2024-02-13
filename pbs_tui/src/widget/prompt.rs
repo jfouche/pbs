@@ -20,19 +20,8 @@ impl Prompt {
     pub fn set_label(&mut self, label: impl ToString) {
         self.label = label.to_string();
     }
-}
 
-impl Widget for Prompt {
-    type Action = PromptEvent;
-
-    fn display(&self, buf: &mut Buffer) {
-        let s = format!("{}{}", self.label, self.input);
-        let y = buf.height() - 1;
-        let next_x = buf.put_str(&s, 0, y, Color::Black, Color::White);
-        buf.set_cursor(next_x, y)
-    }
-
-    fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
+    pub fn handle_event(&mut self, event: &Event) -> Option<PromptEvent> {
         match event {
             Event::Key(key_evt)
                 if !key_evt.modifiers.contains(KeyModifiers::CONTROL)
@@ -59,5 +48,14 @@ impl Widget for Prompt {
             _ => {}
         }
         None
+    }
+}
+
+impl Widget for Prompt {
+    fn display(&self, buf: &mut Buffer) {
+        let s = format!("{}{}", self.label, self.input);
+        let y = buf.height() - 1;
+        let next_x = buf.put_str(&s, 0, y, Color::Black, Color::White);
+        buf.set_cursor(next_x, y)
     }
 }

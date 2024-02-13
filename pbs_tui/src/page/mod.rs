@@ -22,18 +22,8 @@ impl Page {
     }
 }
 
-impl Widget for Page {
-    type Action = PbsAction;
-
-    fn display(&self, buf: &mut Buffer) {
-        match self {
-            Page::Help(page) => page.display(buf),
-            Page::Search(page) => page.display(buf),
-            Page::MakeItem(page) => page.display(buf),
-        }
-    }
-
-    fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
+impl Page {
+    pub fn handle_event(&mut self, event: &Event) -> Option<PbsAction> {
         if let Event::Key(key) = event {
             if key.modifiers.contains(KeyModifiers::CONTROL) {
                 match key.code {
@@ -58,15 +48,19 @@ impl Widget for Page {
         }
 
         match self {
-            Page::Help(page) => {
-                page.handle_event(event);
-                None
-            }
+            Page::Help(_) => None,
             Page::Search(page) => page.handle_event(event),
-            Page::MakeItem(page) => {
-                page.handle_event(event);
-                None
-            }
+            Page::MakeItem(_) => None,
+        }
+    }
+}
+
+impl Widget for Page {
+    fn display(&self, buf: &mut Buffer) {
+        match self {
+            Page::Help(page) => page.display(buf),
+            Page::Search(page) => page.display(buf),
+            Page::MakeItem(page) => page.display(buf),
         }
     }
 }

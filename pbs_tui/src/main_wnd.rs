@@ -21,32 +21,7 @@ impl MainWindow {
         }
     }
 
-    pub fn handle_response(&mut self, response: PbsResponse) {
-        match (response, &mut self.page) {
-            (PbsResponse::Err(err), _) => {
-                self.status.text = err;
-            }
-            (PbsResponse::Items(items), Page::Search(ref mut page)) => {
-                page.set_items(items);
-            }
-            (PbsResponse::Item(item), Page::MakeItem(ref mut _page)) => {
-                self.status.text = format!("{item} created");
-            }
-            _ => {}
-        }
-    }
-}
-
-impl Widget for MainWindow {
-    type Action = PbsAction;
-
-    fn display(&self, buf: &mut widget::Buffer) {
-        self.page.display(buf);
-        self.status.display(buf);
-        self.prompt.display(buf);
-    }
-
-    fn handle_event(&mut self, event: &Event) -> Option<Self::Action> {
+    pub fn handle_event(&mut self, event: &Event) -> Option<PbsAction> {
         match self.page {
             Page::Help(_) => self.prompt.set_label("> "),
             Page::Search(_) => self.prompt.set_label("search> "),
@@ -66,5 +41,28 @@ impl Widget for MainWindow {
             }
         }
         None
+    }
+
+    pub fn handle_response(&mut self, response: PbsResponse) {
+        match (response, &mut self.page) {
+            (PbsResponse::Err(err), _) => {
+                self.status.text = err;
+            }
+            (PbsResponse::Items(items), Page::Search(ref mut page)) => {
+                page.set_items(items);
+            }
+            (PbsResponse::Item(item), Page::MakeItem(ref mut _page)) => {
+                self.status.text = format!("{item} created");
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Widget for MainWindow {
+    fn display(&self, buf: &mut widget::Buffer) {
+        self.page.display(buf);
+        self.status.display(buf);
+        self.prompt.display(buf);
     }
 }

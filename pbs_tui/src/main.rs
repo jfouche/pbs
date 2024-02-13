@@ -21,11 +21,11 @@ use crossterm::{
 use main_wnd::MainWindow;
 use pbs_core::{Item, Store};
 use screen::Screen;
-use widget::Widget;
 
 pub enum PbsAction {
     Search(String),
     CreateItem(String),
+    ViewItem(i64),
 }
 
 pub enum PbsResponse {
@@ -106,6 +106,18 @@ where
                 thread::spawn(move || {
                     let response = match store.make_item(&name) {
                         Ok(item) => PbsResponse::Item(item),
+                        Err(err) => PbsResponse::Err(format!("{err:?}")),
+                    };
+                    tx.send(response).expect("Invalid thread state");
+                });
+            }
+            PbsAction::ViewItem(id) => {
+                thread::spawn(move || {
+                    let response = match store.item(id) {
+                        Ok(item) => match store.children(id) {
+                            Ok(children) => unimplemented!(),
+                            Err(err) => PbsResponse::Err(format!("{err:?}")),
+                        },
                         Err(err) => PbsResponse::Err(format!("{err:?}")),
                     };
                     tx.send(response).expect("Invalid thread state");
