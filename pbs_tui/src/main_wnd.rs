@@ -2,7 +2,7 @@ use crossterm::event::Event;
 
 use crate::{
     page::Page,
-    widget::{self, Prompt, PromptEvent, StatusBar, Widget},
+    widget::{Bound, BufferAccessor, Prompt, PromptEvent, StatusBar, Widget},
     PbsAction, PbsResponse,
 };
 
@@ -60,9 +60,14 @@ impl MainWindow {
 }
 
 impl Widget for MainWindow {
-    fn display(&self, buf: &mut widget::Buffer) {
-        self.page.display(buf);
-        self.status.display(buf);
-        self.prompt.display(buf);
+    fn display(&self, buf: &mut impl BufferAccessor) {
+        let mut page_buf = buf.view(Bound::new(0, 0, buf.width(), buf.height() - 2));
+        self.page.display(&mut page_buf);
+
+        let mut status_buf = buf.view(Bound::new(0, buf.height() - 2, buf.width(), 1));
+        self.status.display(&mut status_buf);
+
+        let mut prompt_buf = buf.view(Bound::new(0, buf.height() - 1, buf.width(), 1));
+        self.prompt.display(&mut prompt_buf);
     }
 }

@@ -1,4 +1,4 @@
-use crate::widget::{Buffer, Paragraph, Title, Widget};
+use crate::widget::{BufferAccessor, Paragraph, Title, Widget};
 
 pub struct PageHelp;
 
@@ -9,7 +9,7 @@ CTRL-b : Create a new BUY item
 CTRL-x : Exit application"#;
 
 impl Widget for PageHelp {
-    fn display(&self, buf: &mut Buffer) {
+    fn display(&self, buf: &mut impl BufferAccessor) {
         buf.add(Title("HELP".to_string()));
         buf.add(Paragraph(HELP_TEXT.to_string()));
     }

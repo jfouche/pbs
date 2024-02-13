@@ -1,11 +1,11 @@
 use crossterm::{
     cursor,
     style::{self, Color, SetBackgroundColor},
-    terminal, QueueableCommand,
+    QueueableCommand,
 };
 use std::io;
 
-use crate::widget::{Buffer, Cell, Widget};
+use crate::widget::{Buffer, BufferAccessor, Cell, Widget};
 
 pub struct Screen {
     previous_buffer: Buffer,

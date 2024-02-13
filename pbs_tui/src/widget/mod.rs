@@ -3,6 +3,8 @@ mod prompt;
 mod statusbar;
 mod title;
 
+use std::ops::Range;
+
 use crossterm::style::Color;
 pub use paragraph::Paragraph;
 pub use prompt::{Prompt, PromptEvent};
@@ -10,11 +12,11 @@ pub use statusbar::StatusBar;
 pub use title::Title;
 
 pub trait Widget {
-    fn display(&self, buf: &mut Buffer);
+    fn display(&self, buf: &mut impl BufferAccessor);
 }
 
 impl<T: Widget> Widget for &mut T {
-    fn display(&self, buf: &mut Buffer) {
+    fn display(&self, buf: &mut impl BufferAccessor) {
         (**self).display(buf);
     }
 }
@@ -70,20 +72,8 @@ impl Buffer {
         self.buf.fill(cell);
     }
 
-    pub fn width(&self) -> usize {
-        self.width
-    }
-
-    pub fn height(&self) -> usize {
-        self.height
-    }
-
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
-    }
-
-    pub fn set_cursor(&mut self, x: usize, y: usize) {
-        self.cursor = (x, y);
     }
 
     fn idx(&self, x: usize, y: usize) -> usize {
@@ -92,53 +82,6 @@ impl Buffer {
 
     fn coord(&self, idx: usize) -> (usize, usize) {
         (idx % self.width, idx / self.width)
-    }
-
-    /// Put a char on the screen. The coordinates start at 0
-    pub fn put_char(&mut self, c: char, x: usize, y: usize, bg_color: Color, fg_color: Color) {
-        assert!(x < self.width && y < self.height);
-        let idx = self.idx(x, y);
-        if let Some(v) = self.buf.get_mut(idx) {
-            *v = Cell {
-                c,
-                bg_color,
-                fg_color,
-            }
-        };
-    }
-
-    /// put a str on the screen. If the str go out of the screen, it will
-    /// print `…` to show ellision
-    // TODO : &self.current[x..x + s.len()].copy_from_slice(s[..]);
-    // Returns the x position at the end of the str
-    pub fn put_str(
-        &mut self,
-        s: &str,
-        x: usize,
-        y: usize,
-        bg_color: Color,
-        fg_color: Color,
-    ) -> usize {
-        assert!(x < self.width && y < self.height);
-        if x + s.len() <= self.width {
-            // There is enough space in line
-            for (i, c) in s.chars().enumerate() {
-                self.put_char(c, x + i, y, bg_color, fg_color);
-            }
-            x + s.len()
-        } else {
-            // The string is too long, limit it and append […]
-            let offset = self.width - x - 1; // -1 for ...
-            for (i, c) in s[0..offset].chars().enumerate() {
-                self.put_char(c, x + i, y, bg_color, fg_color);
-            }
-            self.put_char('…', x + offset, y, bg_color, fg_color);
-            self.width
-        }
-    }
-
-    pub fn add(&mut self, w: impl Widget) {
-        w.display(self);
     }
 
     /// create the diffs betwen 2 buffers
@@ -160,4 +103,162 @@ pub struct Patch {
     pub x: usize,
     pub y: usize,
     pub cell: Cell,
+}
+
+pub struct Bound {
+    x: usize,
+    y: usize,
+    w: usize,
+    h: usize,
+}
+
+impl Bound {
+    pub fn new(x: usize, y: usize, w: usize, h: usize) -> Self {
+        Bound { x, y, w, h }
+    }
+
+    pub fn from_range(x: Range<usize>, y: Range<usize>) -> Self {
+        Bound {
+            x: x.start,
+            y: y.start,
+            w: x.end - x.start,
+            h: y.end - y.start,
+        }
+    }
+}
+
+pub struct BufferView<'a> {
+    buf: &'a mut Buffer,
+    bound: Bound,
+}
+
+impl<'a> BufferView<'a> {
+    pub fn from_buffer(buf: &'a mut Buffer, bound: Bound) -> Self {
+        BufferView { buf, bound }
+    }
+    pub fn from_view<'b>(buf: &'a mut BufferView, bound: Bound) -> Self {
+        BufferView {
+            buf: buf.buf,
+            bound,
+        }
+    }
+}
+
+pub trait BufferAccessor {
+    fn view(&mut self, bound: Bound) -> BufferView;
+
+    /// Put a char on the screen. The coordinates start at 0
+    fn put_char(&mut self, c: char, x: usize, y: usize, bg_color: Color, fg_color: Color);
+
+    /// put a str on the screen. If the str go out of the screen, it will
+    /// print `…` to show ellision
+    /// Returns the x position at the end of the str
+    fn put_str(&mut self, s: &str, x: usize, y: usize, bg_color: Color, fg_color: Color) -> usize;
+
+    /// Width of the buffer
+    fn width(&self) -> usize;
+
+    /// Height of the buffer
+    fn height(&self) -> usize;
+
+    // Add a widget
+    fn add(&mut self, w: impl Widget);
+
+    /// Position the cursor
+    fn set_cursor(&mut self, x: usize, y: usize);
+}
+
+impl BufferAccessor for Buffer {
+    fn view(&mut self, bound: Bound) -> BufferView {
+        BufferView::from_buffer(self, bound)
+    }
+
+    fn put_char(&mut self, c: char, x: usize, y: usize, bg_color: Color, fg_color: Color) {
+        assert!(x < self.width && y < self.height);
+        let idx = self.idx(x, y);
+        if let Some(v) = self.buf.get_mut(idx) {
+            *v = Cell {
+                c,
+                bg_color,
+                fg_color,
+            }
+        };
+    }
+
+    // TODO : &self.current[x..x + s.len()].copy_from_slice(s[..]);
+    fn put_str(&mut self, s: &str, x: usize, y: usize, bg_color: Color, fg_color: Color) -> usize {
+        assert!(
+            x < self.width && y < self.height,
+            "{x} < {w}, {y} < {h} : {s}",
+            w = self.width,
+            h = self.height
+        );
+        if x + s.len() <= self.width {
+            // There is enough space in line
+            for (i, c) in s.chars().enumerate() {
+                self.put_char(c, x + i, y, bg_color, fg_color);
+            }
+            x + s.len()
+        } else {
+            // The string is too long, limit it and append […]
+            let offset = self.width - x - 1; // -1 for ...
+            for (i, c) in s[0..offset].chars().enumerate() {
+                self.put_char(c, x + i, y, bg_color, fg_color);
+            }
+            self.put_char('…', x + offset, y, bg_color, fg_color);
+            self.width
+        }
+    }
+
+    fn width(&self) -> usize {
+        self.width
+    }
+
+    fn height(&self) -> usize {
+        self.height
+    }
+
+    fn add(&mut self, w: impl Widget) {
+        w.display(self);
+    }
+
+    fn set_cursor(&mut self, x: usize, y: usize) {
+        self.cursor = (x, y);
+    }
+}
+
+impl<'a> BufferAccessor for BufferView<'a> {
+    fn view(&mut self, bound: Bound) -> BufferView {
+        BufferView::from_view(self, bound)
+    }
+
+    fn put_char(&mut self, c: char, x: usize, y: usize, bg_color: Color, fg_color: Color) {
+        let x = self.bound.x + x;
+        let y = self.bound.y + y;
+        if x < self.bound.w {
+            self.buf.put_char(c, x, y, bg_color, fg_color)
+        }
+    }
+
+    fn put_str(&mut self, s: &str, x: usize, y: usize, bg_color: Color, fg_color: Color) -> usize {
+        let x = self.bound.x + x;
+        let y = self.bound.y + y;
+        self.buf.put_str(s, x, y, bg_color, fg_color)
+    }
+
+    fn add(&mut self, w: impl Widget) {
+        self.buf.add(w)
+    }
+
+    fn width(&self) -> usize {
+        self.bound.w
+    }
+
+    fn height(&self) -> usize {
+        self.bound.h
+    }
+
+    fn set_cursor(&mut self, x: usize, y: usize) {
+        self.buf.set_cursor(self.bound.x + x, self.bound.y + y)
+    }
 }

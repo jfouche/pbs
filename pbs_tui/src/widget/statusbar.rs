@@ -1,6 +1,6 @@
 use crossterm::style::Color;
 
-use super::{Buffer, Widget};
+use super::{BufferAccessor, Widget};
 
 #[derive(Default)]
 pub struct StatusBar {
@@ -8,8 +8,8 @@ pub struct StatusBar {
 }
 
 impl Widget for StatusBar {
-    fn display(&self, buf: &mut Buffer) {
+    fn display(&self, buf: &mut impl BufferAccessor) {
         let line = format!("{}{}", self.text, " ".repeat(buf.width() - self.text.len()));
-        buf.put_str(&line, 0, buf.height() - 2, Color::White, Color::Black);
+        buf.put_str(&line, 0, 0, Color::White, Color::Black);
     }
 }

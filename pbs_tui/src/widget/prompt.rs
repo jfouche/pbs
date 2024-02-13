@@ -3,7 +3,7 @@ use crossterm::{
     style::Color,
 };
 
-use super::{Buffer, Widget};
+use super::{BufferAccessor, Widget};
 
 #[derive(Default)]
 pub struct Prompt {
@@ -52,7 +52,7 @@ impl Prompt {
 }
 
 impl Widget for Prompt {
-    fn display(&self, buf: &mut Buffer) {
+    fn display(&self, buf: &mut impl BufferAccessor) {
         let s = format!("{}{}", self.label, self.input);
         let y = buf.height() - 1;
         let next_x = buf.put_str(&s, 0, y, Color::Black, Color::White);

@@ -1,6 +1,6 @@
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 
-use crate::widget::Buffer;
+use crate::widget::BufferAccessor;
 use crate::widget::Widget;
 use crate::PbsAction;
 
@@ -56,7 +56,7 @@ impl Page {
 }
 
 impl Widget for Page {
-    fn display(&self, buf: &mut Buffer) {
+    fn display(&self, buf: &mut impl BufferAccessor) {
         match self {
             Page::Help(page) => page.display(buf),
             Page::Search(page) => page.display(buf),

@@ -114,8 +114,8 @@ where
             PbsAction::ViewItem(id) => {
                 thread::spawn(move || {
                     let response = match store.item(id) {
-                        Ok(item) => match store.children(id) {
-                            Ok(children) => unimplemented!(),
+                        Ok(_item) => match store.children(id) {
+                            Ok(_children) => unimplemented!(),
                             Err(err) => PbsResponse::Err(format!("{err:?}")),
                         },
                         Err(err) => PbsResponse::Err(format!("{err:?}")),
@@ -162,4 +162,44 @@ fn main() -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use std::ops::Range;
+
+    struct Buffer {
+        v: Vec<u8>,
+    }
+
+    struct BufferView<'a> {
+        b: &'a mut Buffer,
+        range: Range<usize>,
+    }
+
+    trait BufferAccessor {
+        fn view(&mut self, range: Range<usize>) -> BufferView;
+    }
+
+    impl BufferAccessor for Buffer {
+        fn view(&mut self, range: Range<usize>) -> BufferView {
+            BufferView { b: self, range }
+        }
+    }
+    impl BufferAccessor for BufferView<'_> {
+        fn view(&mut self, range: Range<usize>) -> BufferView {
+            BufferView { b: self.b, range }
+        }
+    }
+
+    #[test]
+    fn test() {
+        let mut buf = Buffer { v: vec![1, 100] };
+        let bv = buf.view(0..2);
+
+        // let bv = BufferView {
+        //     b: &mut buf,
+        //     range: 0..2,
+        // };
+    }
 }
