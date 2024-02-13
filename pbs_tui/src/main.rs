@@ -70,6 +70,9 @@ where
                         // Exit program
                         return Ok(());
                     }
+
+                    Event::Resize(cols, rows) => screen.resize(cols as usize, rows as usize),
+
                     ev => {
                         if let Some(action) = wnd.handle_event(&ev) {
                             self.handle_action(action, tx.clone());

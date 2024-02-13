@@ -65,6 +65,14 @@ impl Buffer {
         }
     }
 
+    pub fn resize_with(&mut self, w: usize, h: usize, cell: Cell) {
+        self.width = w;
+        self.height = h;
+        self.buf.resize(w * h, cell);
+        self.buf.fill(cell);
+        // TODO : move cursor if necessary
+    }
+
     pub fn reset(&mut self) {
         self.reset_with(Cell::default());
     }

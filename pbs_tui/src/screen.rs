@@ -12,21 +12,27 @@ pub struct Screen {
     current_buffer: Buffer,
 }
 
+const INV_CELL: Cell = Cell {
+    c: 'x',
+    bg_color: Color::Yellow,
+    fg_color: Color::Yellow,
+};
+
 impl Screen {
     pub fn new(width: usize, height: usize) -> Self {
         let current_buffer = Buffer::new(width, height);
         let mut previous_buffer = Buffer::new(width, height);
-        // Fill the previous buffer with chars, to force full redraw on first render
-        previous_buffer.reset_with(Cell {
-            c: 'x',
-            bg_color: Color::Yellow,
-            fg_color: Color::Yellow,
-        });
+        previous_buffer.reset_with(INV_CELL);
 
         Screen {
             previous_buffer,
             current_buffer,
         }
+    }
+
+    pub(crate) fn resize(&mut self, w: usize, h: usize) {
+        self.current_buffer.resize_with(w, h, Cell::default());
+        self.previous_buffer.resize_with(w, h, INV_CELL);
     }
 
     pub fn render(&mut self, w: &mut impl io::Write) -> io::Result<()> {
@@ -46,6 +52,16 @@ impl Screen {
             w.queue(cursor::MoveTo(patch.x as u16, patch.y as u16))?
                 .queue(style::Print(cell.c))?;
         }
+
+        // DEBUG
+        // {
+        //     let debug = format!(
+        //         "{}, {}",
+        //         self.current_buffer.width(),
+        //         self.current_buffer.height()
+        //     );
+        //     w.queue(cursor::MoveTo(10, 2))?.queue(style::Print(debug))?;
+        // }
 
         if self.previous_buffer.cursor() != self.current_buffer.cursor() {
             let (x, y) = self.current_buffer.cursor();
