@@ -1,4 +1,7 @@
-use crate::widget::{BufferAccessor, Paragraph, Title, Widget};
+use crate::{
+    buffer::BufferAccessor,
+    widget::{Paragraph, Title, Widget},
+};
 
 pub struct PageHelp;
 

@@ -1,3 +1,4 @@
+mod buffer;
 mod main_wnd;
 mod page;
 mod screen;
@@ -162,44 +163,4 @@ fn main() -> io::Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use std::ops::Range;
-
-    struct Buffer {
-        v: Vec<u8>,
-    }
-
-    struct BufferView<'a> {
-        b: &'a mut Buffer,
-        range: Range<usize>,
-    }
-
-    trait BufferAccessor {
-        fn view(&mut self, range: Range<usize>) -> BufferView;
-    }
-
-    impl BufferAccessor for Buffer {
-        fn view(&mut self, range: Range<usize>) -> BufferView {
-            BufferView { b: self, range }
-        }
-    }
-    impl BufferAccessor for BufferView<'_> {
-        fn view(&mut self, range: Range<usize>) -> BufferView {
-            BufferView { b: self.b, range }
-        }
-    }
-
-    #[test]
-    fn test() {
-        let mut buf = Buffer { v: vec![1, 100] };
-        let bv = buf.view(0..2);
-
-        // let bv = BufferView {
-        //     b: &mut buf,
-        //     range: 0..2,
-        // };
-    }
 }

@@ -5,7 +5,10 @@ use crossterm::{
 };
 use std::io;
 
-use crate::widget::{Buffer, BufferAccessor, Cell, Widget};
+use crate::{
+    buffer::{Buffer, BufferAccessor, Cell},
+    widget::Widget,
+};
 
 pub struct Screen {
     previous_buffer: Buffer,

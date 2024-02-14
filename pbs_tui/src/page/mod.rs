@@ -1,8 +1,7 @@
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 
-use crate::widget::BufferAccessor;
-use crate::widget::Widget;
 use crate::PbsAction;
+use crate::{buffer::BufferAccessor, widget::Widget};
 
 use self::{help::PageHelp, new_item::PageMakeItem, search::PageSearch};
 

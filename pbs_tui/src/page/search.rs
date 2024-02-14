@@ -1,5 +1,6 @@
 use crate::{
-    widget::{BufferAccessor, Title, Widget},
+    buffer::BufferAccessor,
+    widget::{Title, Widget},
     PbsAction,
 };
 use crossterm::{
@@ -45,9 +46,9 @@ impl Widget for PageSearch {
     fn display(&self, buf: &mut impl BufferAccessor) {
         buf.add(Title("SEARCH".to_string()));
 
-        let h = buf.height() - 3; // removed title, status & prompt
+        let h = buf.height() - 1; // removed title
         for (i, item) in self.items.iter().enumerate() {
-            let y = i + 2;
+            let y = i + 1;
             if y >= h {
                 break;
             }

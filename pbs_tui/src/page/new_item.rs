@@ -1,4 +1,7 @@
-use crate::widget::{BufferAccessor, Title, Widget};
+use crate::{
+    buffer::BufferAccessor,
+    widget::{Title, Widget},
+};
 
 pub struct PageMakeItem;
 

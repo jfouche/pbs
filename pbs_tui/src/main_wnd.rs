@@ -1,8 +1,9 @@
 use crossterm::event::Event;
 
 use crate::{
+    buffer::{Bound, BufferAccessor},
     page::Page,
-    widget::{Bound, BufferAccessor, Prompt, PromptEvent, StatusBar, Widget},
+    widget::{Prompt, PromptEvent, StatusBar, Widget},
     PbsAction, PbsResponse,
 };
 
