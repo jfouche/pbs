@@ -1,7 +1,5 @@
 use crossterm::style::Color;
 
-use crate::widget::Widget;
-
 #[derive(Clone, Copy, PartialEq)]
 pub struct Cell {
     pub c: char,
@@ -133,9 +131,6 @@ pub trait BufferAccessor {
     /// Height of the buffer
     fn height(&self) -> usize;
 
-    // Add a widget
-    fn add(&mut self, w: impl Widget);
-
     /// Position the cursor
     fn set_cursor(&mut self, x: usize, y: usize);
 }
@@ -190,10 +185,6 @@ impl BufferAccessor for Buffer {
         self.height
     }
 
-    fn add(&mut self, w: impl Widget) {
-        w.display(self);
-    }
-
     fn set_cursor(&mut self, x: usize, y: usize) {
         self.cursor = (x, y);
     }
@@ -216,10 +207,6 @@ impl<'a> BufferAccessor for BufferView<'a> {
         let x = self.bound.x + x;
         let y = self.bound.y + y;
         self.buf.put_str(s, x, y, bg_color, fg_color)
-    }
-
-    fn add(&mut self, w: impl Widget) {
-        self.buf.add(w)
     }
 
     fn width(&self) -> usize {

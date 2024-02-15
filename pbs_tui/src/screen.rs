@@ -6,7 +6,7 @@ use crossterm::{
 use std::io;
 
 use crate::{
-    buffer::{Buffer, BufferAccessor, Cell},
+    buffer::{Buffer, Cell},
     widget::Widget,
 };
 
@@ -89,6 +89,6 @@ impl Screen {
     }
 
     pub fn add(&mut self, w: impl Widget) {
-        self.current_buffer.add(w);
+        w.display(&mut self.current_buffer);
     }
 }

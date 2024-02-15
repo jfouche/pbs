@@ -44,7 +44,7 @@ impl PageSearch {
 
 impl Widget for PageSearch {
     fn display(&self, buf: &mut impl BufferAccessor) {
-        buf.add(Title("SEARCH".to_string()));
+        Title("SEARCH".to_string()).display(buf);
 
         let h = buf.height() - 1; // removed title
         for (i, item) in self.items.iter().enumerate() {
